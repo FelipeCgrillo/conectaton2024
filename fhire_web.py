@@ -6,6 +6,23 @@ from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 
+import qrcode
+from io import BytesIO
+from streamlit_qrcode_scanner import qrcode_scanner
+
+# Agregar estas constantes al inicio del archivo
+ENCOUNTER_TYPES = {
+    "AMB": "Ambulatory",
+    "EMER": "Emergency",
+    "HH": "Home Health",
+    "IMP": "Inpatient",
+    "ACUTE": "Acute Care",
+    "NONAC": "Non-Acute",
+    "OBSENC": "Observation Encounter",
+    "PRENC": "Pre-Admission",
+    "SS": "Short Stay"
+}
+
 def search_patient(patient_id):
     """
     Search for a patient using the given patient ID from the specified API endpoint.
@@ -110,6 +127,153 @@ def process_observations(observations):
         })
     return grouped_observations
 
+def create_clinical_event(patient_id, event_data):
+    """
+    Creates a new clinical event for a patient.
+    
+    Args:
+        patient_id (str): Patient ID
+        event_data (dict): Clinical event data
+    Returns:
+        bool: True if created successfully, False otherwise
+    """
+    try:
+        url = "https://ips-challenge.it.hs-heilbronn.de/fhir/Encounter"
+        
+        # FHIR resource structure for encounter
+        encounter_resource = {
+            "resourceType": "Encounter",
+            "status": "finished",
+            "class": {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code": event_data['encounter_type'],
+                "display": event_data['encounter_type']
+            },
+            "subject": {
+                "reference": f"Patient/{patient_id}"
+            },
+            "period": {
+                "start": event_data['date'],
+                "end": event_data['date']
+            },
+            "type": [{
+                "text": event_data['description']
+            }],
+            "reasonCode": [{
+                "text": event_data['reason']
+            }]
+        }
+        
+        # Make POST request
+        response = requests.post(
+            url,
+            json=encounter_resource,
+            headers={"Content-Type": "application/fhir+json"}
+        )
+        
+        return response.status_code == 201
+    except requests.RequestException as e:
+        st.error(f"Error creating clinical event: {e}")
+        return False
+
+def create_condition(patient_id, condition_data):
+    """
+    Creates a new condition for a patient.
+    """
+    try:
+        url = "https://ips-challenge.it.hs-heilbronn.de/fhir/Condition"
+        
+        condition_resource = {
+            "resourceType": "Condition",
+            "subject": {
+                "reference": f"Patient/{patient_id}"
+            },
+            "clinicalStatus": {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                    "code": condition_data['status'],
+                    "display": condition_data['status']
+                }]
+            },
+            "code": {
+                "text": condition_data['condition']
+            },
+            "onsetDateTime": condition_data['onset_date']
+        }
+        
+        response = requests.post(
+            url,
+            json=condition_resource,
+            headers={"Content-Type": "application/fhir+json"}
+        )
+        return response.status_code == 201
+    except requests.RequestException as e:
+        st.error(f"Error creating condition: {e}")
+        return False
+
+def create_observation(patient_id, observation_data):
+    """
+    Creates a new observation for a patient.
+    """
+    try:
+        url = "https://ips-challenge.it.hs-heilbronn.de/fhir/Observation"
+        
+        observation_resource = {
+            "resourceType": "Observation",
+            "status": "final",
+            "subject": {
+                "reference": f"Patient/{patient_id}"
+            },
+            "code": {
+                "text": observation_data['type']
+            },
+            "valueQuantity": {
+                "value": observation_data['value'],
+                "unit": observation_data['unit']
+            },
+            "effectiveDateTime": observation_data['date']
+        }
+        
+        response = requests.post(
+            url,
+            json=observation_resource,
+            headers={"Content-Type": "application/fhir+json"}
+        )
+        return response.status_code == 201
+    except requests.RequestException as e:
+        st.error(f"Error creating observation: {e}")
+        return False
+
+def create_diagnostic_report(patient_id, report_data):
+    """
+    Creates a new diagnostic report for a patient.
+    """
+    try:
+        url = "https://ips-challenge.it.hs-heilbronn.de/fhir/DiagnosticReport"
+        
+        report_resource = {
+            "resourceType": "DiagnosticReport",
+            "status": "final",
+            "subject": {
+                "reference": f"Patient/{patient_id}"
+            },
+            "code": {
+                "text": report_data['type']
+            },
+            "effectiveDateTime": report_data['date'],
+            "conclusion": report_data['conclusion']
+        }
+        
+        response = requests.post(
+            url,
+            json=report_resource,
+            headers={"Content-Type": "application/fhir+json"}
+        )
+        return response.status_code == 201
+    except requests.RequestException as e:
+        st.error(f"Error creating diagnostic report: {e}")
+        return False
+
 def display_patient_info(patient_data):
     if not patient_data:
         st.warning("No patient data found.")
@@ -118,8 +282,8 @@ def display_patient_info(patient_data):
     st.success("Patient Found!")
     patient_id = patient_data.get('id')
     
-    # Create tabs for different categories of information
-    tabs = st.tabs(["Demographics", "Clinical", "Encounters & Procedures", "Reports & Results"])
+    # Update tab names to English
+    tabs = st.tabs(["Demographics", "Clinical", "Encounters & Procedures", "Reports & Results", "New Event"])
     
     with tabs[0]:  # Demographics
         # Basic Information Section
@@ -515,6 +679,89 @@ def display_patient_info(patient_data):
             else:
                 st.info("No diagnostic reports recorded")
 
+    with tabs[4]:  # New Event form
+        st.markdown("### 📝 Register New Clinical Event")
+        
+        event_type = st.radio(
+            "Event Type",
+            ["Encounter", "Condition", "Observation", "Diagnostic Report"]
+        )
+        
+        with st.form("new_clinical_event"):
+            if event_type == "Encounter":
+                encounter_type = st.selectbox(
+                    "Encounter Type",
+                    options=list(ENCOUNTER_TYPES.keys()),
+                    format_func=lambda x: f"{x} - {ENCOUNTER_TYPES[x]}"
+                )
+                
+                description = st.text_area(
+                    "Event Description",
+                    placeholder="Describe the clinical event..."
+                )
+                
+                reason = st.text_input(
+                    "Reason",
+                    placeholder="Reason for encounter"
+                )
+                
+                date = st.date_input(
+                    "Event Date"
+                )
+                
+            elif event_type == "Condition":
+                condition = st.text_input("Condition", placeholder="e.g., Diabetes decompensation")
+                status = st.selectbox("Clinical Status", ["active", "recurrence", "resolved"])
+                onset_date = st.date_input("Onset Date")
+                
+            elif event_type == "Observation":
+                obs_type = st.text_input("Observation Type", placeholder="e.g., Blood Glucose")
+                value = st.number_input("Value")
+                unit = st.text_input("Unit", placeholder="e.g., mg/dL")
+                obs_date = st.date_input("Observation Date")
+                
+            elif event_type == "Diagnostic Report":
+                report_type = st.text_input("Report Type", placeholder="e.g., Lab Results")
+                conclusion = st.text_area("Conclusion")
+                report_date = st.date_input("Report Date")
+            
+            submitted = st.form_submit_button("Register Event")
+            
+            if submitted:
+                success = False
+                if event_type == "Encounter":
+                    success = create_clinical_event(patient_id, {
+                        "encounter_type": encounter_type,
+                        "description": description,
+                        "reason": reason,
+                        "date": date.isoformat()
+                    })
+                elif event_type == "Condition":
+                    success = create_condition(patient_id, {
+                        "condition": condition,
+                        "status": status,
+                        "onset_date": onset_date.isoformat()
+                    })
+                elif event_type == "Observation":
+                    success = create_observation(patient_id, {
+                        "type": obs_type,
+                        "value": value,
+                        "unit": unit,
+                        "date": obs_date.isoformat()
+                    })
+                elif event_type == "Diagnostic Report":
+                    success = create_diagnostic_report(patient_id, {
+                        "type": report_type,
+                        "conclusion": conclusion,
+                        "date": report_date.isoformat()
+                    })
+                
+                if success:
+                    st.success(f"{event_type} registered successfully")
+                    st.experimental_rerun()
+                else:
+                    st.error(f"Error registering {event_type}")
+
 def get_location_coordinates(address_str):
     """
     Get coordinates for an address using Nominatim geocoder.
@@ -526,7 +773,15 @@ def get_location_coordinates(address_str):
         tuple: (latitude, longitude) or None if geocoding fails
     """
     try:
-        geolocator = Nominatim(user_agent="patient_search_portal")
+        import ssl
+        import certifi
+        
+        ctx = ssl.create_default_context(cafile=certifi.where())
+        geolocator = Nominatim(
+            user_agent="patient_search_portal",
+            ssl_context=ctx
+        )
+        
         location = geolocator.geocode(address_str, timeout=10)
         if location:
             return location.latitude, location.longitude
@@ -534,6 +789,33 @@ def get_location_coordinates(address_str):
     except (GeocoderTimedOut, GeocoderUnavailable) as e:
         st.warning(f"Geocoding error: {e}")
         return None
+    except Exception as e:
+        st.warning(f"Error getting coordinates: {e}")
+        return None
+
+def generate_patient_qr(patient_id):
+    """
+    Generate QR code for a patient ID
+    
+    Args:
+        patient_id (str): The patient's ID
+    Returns:
+        BytesIO: QR code image in bytes
+    """
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(patient_id)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    img_byte_arr = BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+    return img_byte_arr
 
 def main():
     """
@@ -545,23 +827,58 @@ def main():
     # Title of the application
     st.title("Patient Search Portal")
     
-    # Input for Patient ID
-    patient_id = st.text_input("Enter Patient ID", placeholder="Enter a valid Patient ID")
+    # Create tabs for different search methods
+    search_method = st.radio(
+        "Choose search method:",
+        ["Manual ID Entry", "QR Code Scanner", "Generate QR"]
+    )
     
-    # Search button
-    if st.button("Search Patient"):
-        # Validate input
-        if not patient_id:
-            st.warning("Please enter a Patient ID")
-            return
+    if search_method == "Manual ID Entry":
+        # Input for Patient ID
+        patient_id = st.text_input("Enter Patient ID", placeholder="Enter a valid Patient ID")
         
-        # Show loading spinner while searching
-        with st.spinner('Searching for patient...'):
-            # Search for patient
-            patient_data = search_patient(patient_id)
+        # Search button
+        if st.button("Search Patient"):
+            if not patient_id:
+                st.warning("Please enter a Patient ID")
+                return
             
-            # Display patient information
-            display_patient_info(patient_data)
+            with st.spinner('Searching for patient...'):
+                patient_data = search_patient(patient_id)
+                display_patient_info(patient_data)
+    
+    elif search_method == "QR Code Scanner":
+        st.write("Scan QR Code")
+        qr_code = qrcode_scanner()
+        
+        if qr_code:
+            with st.spinner('Searching for patient...'):
+                patient_data = search_patient(qr_code)
+                if patient_data:
+                    display_patient_info(patient_data)
+                else:
+                    st.error("Patient not found")
+    
+    elif search_method == "Generate QR":
+        patient_id = st.text_input("Enter Patient ID for QR Generation", 
+                                 placeholder="Enter a valid Patient ID")
+        
+        if st.button("Generate QR"):
+            if not patient_id:
+                st.warning("Please enter a Patient ID")
+                return
+            
+            # Generate and display QR code
+            qr_image = generate_patient_qr(patient_id)
+            st.image(qr_image, caption=f"QR Code for Patient {patient_id}")
+            
+            # Add download button
+            st.download_button(
+                label="Download QR Code",
+                data=qr_image,
+                file_name=f"patient_{patient_id}_qr.png",
+                mime="image/png"
+            )
 
 # Run the Streamlit app
 if __name__ == "__main__":
