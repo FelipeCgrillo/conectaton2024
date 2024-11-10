@@ -11,3 +11,4 @@ certifi==2024.2.2
 qrcode==7.4.2
 Pillow==10.2.0
 opencv-python-headless==4.9.0.80
+streamlit-qrcode-scanner
