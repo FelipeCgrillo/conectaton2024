@@ -890,6 +890,7 @@ elif search_method == "Generate QR":
             file_name=f"patient_{patient_id}_qr.png",
             mime="image/png"
         )
+st.session_state['patient_id'] = patient_id
 menu()
 
 # Run the Streamlit app
