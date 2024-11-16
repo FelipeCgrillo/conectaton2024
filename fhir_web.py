@@ -10,6 +10,17 @@ import qrcode
 from io import BytesIO
 from streamlit_qrcode_scanner import qrcode_scanner
 
+from menu import menu
+
+# Set page title and icon
+st.set_page_config(page_title="Patient Search", page_icon="🩺")
+
+#Initialize session state
+if "found_patient" not in st.session_state:
+    st.session_state.found_patient = None
+
+st.session_state._found_patient = st.session_state.found_patient
+
 # Agregar estas constantes al inicio del archivo
 ENCOUNTER_TYPES = {
     "AMB": "Ambulatory",
@@ -817,69 +828,70 @@ def generate_patient_qr(patient_id):
     img_byte_arr.seek(0)
     return img_byte_arr
 
-def main():
-    """
-    Main Streamlit application function
-    """
-    # Set page title and icon
-    st.set_page_config(page_title="Patient Search", page_icon="🩺")
+#def main():
+"""
+Main Streamlit application function
+"""
+
+
+# Title of the application
+st.title("Patient Search Portal")
+
+# Create tabs for different search methods
+search_method = st.radio(
+    "Choose search method:",
+    ["Manual ID Entry", "QR Code Scanner", "Generate QR"]
+)
+
+if search_method == "Manual ID Entry":
+    # Input for Patient ID
+    patient_id = st.text_input("Enter Patient ID", placeholder="Enter a valid Patient ID")
     
-    # Title of the application
-    st.title("Patient Search Portal")
-    
-    # Create tabs for different search methods
-    search_method = st.radio(
-        "Choose search method:",
-        ["Manual ID Entry", "QR Code Scanner", "Generate QR"]
-    )
-    
-    if search_method == "Manual ID Entry":
-        # Input for Patient ID
-        patient_id = st.text_input("Enter Patient ID", placeholder="Enter a valid Patient ID")
-        
-        # Search button
-        if st.button("Search Patient"):
-            if not patient_id:
-                st.warning("Please enter a Patient ID")
-                return
+    # Search button
+    if st.button("Search Patient"):
+        if not patient_id:
+            st.warning("Please enter a Patient ID")
             
-            with st.spinner('Searching for patient...'):
-                patient_data = search_patient(patient_id)
+        
+        with st.spinner('Searching for patient...'):
+            patient_data = search_patient(patient_id)
+            st.session_state.found_patient = True
+            display_patient_info(patient_data)
+
+elif search_method == "QR Code Scanner":
+    st.write("Scan QR Code")
+    qr_code = qrcode_scanner()
+    
+    if qr_code:
+        with st.spinner('Searching for patient...'):
+            patient_data = search_patient(qr_code)
+            if patient_data:
                 display_patient_info(patient_data)
+            else:
+                st.error("Patient not found")
+
+elif search_method == "Generate QR":
+    patient_id = st.text_input("Enter Patient ID for QR Generation", 
+                                placeholder="Enter a valid Patient ID")
     
-    elif search_method == "QR Code Scanner":
-        st.write("Scan QR Code")
-        qr_code = qrcode_scanner()
-        
-        if qr_code:
-            with st.spinner('Searching for patient...'):
-                patient_data = search_patient(qr_code)
-                if patient_data:
-                    display_patient_info(patient_data)
-                else:
-                    st.error("Patient not found")
-    
-    elif search_method == "Generate QR":
-        patient_id = st.text_input("Enter Patient ID for QR Generation", 
-                                 placeholder="Enter a valid Patient ID")
-        
-        if st.button("Generate QR"):
-            if not patient_id:
-                st.warning("Please enter a Patient ID")
-                return
+    if st.button("Generate QR"):
+        if not patient_id:
+            st.warning("Please enter a Patient ID")
             
-            # Generate and display QR code
-            qr_image = generate_patient_qr(patient_id)
-            st.image(qr_image, caption=f"QR Code for Patient {patient_id}")
-            
-            # Add download button
-            st.download_button(
-                label="Download QR Code",
-                data=qr_image,
-                file_name=f"patient_{patient_id}_qr.png",
-                mime="image/png"
-            )
+        
+        # Generate and display QR code
+        qr_image = generate_patient_qr(patient_id)
+        st.image(qr_image, caption=f"QR Code for Patient {patient_id}")
+        
+        # Add download button
+        st.download_button(
+            label="Download QR Code",
+            data=qr_image,
+            file_name=f"patient_{patient_id}_qr.png",
+            mime="image/png"
+        )
+menu()
 
 # Run the Streamlit app
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+#    main()
