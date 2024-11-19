@@ -53,6 +53,7 @@ def search_patient(patient_id):
         
         # Check if the request was successful
         if response.status_code == 200:
+            st.session_state['patient_id'] = patient_id
             return response.json()
         else:
             return None
