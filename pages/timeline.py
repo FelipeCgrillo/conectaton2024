@@ -15,7 +15,7 @@ def print_timeline(data):
         st.warning("No patient found.")
         st.stop()
 
-    st.title("Clinical timeline")
+    st.title("Clinical Timeline")
 
     # Convert data into a DataFrame
     df = pd.DataFrame(data)
@@ -57,7 +57,6 @@ def print_timeline(data):
             x="Date",
             y="Title",
             text="Title",
-            title="FHIR Resource Timeline",
             labels={"Date": "Date", "Title": "Resource Type"},
             hover_data=["Details"]
         )
