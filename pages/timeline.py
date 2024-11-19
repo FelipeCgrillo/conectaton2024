@@ -7,6 +7,68 @@ from fhir.resources.composition import Composition
 
 patient_id = st.session_state.pop('patient_id', None)
 
+def print_timeline(data):
+    menu_with_redirect()
+
+    # Verify the user's role
+    if not st.session_state.found_patient:
+        st.warning("No patient found.")
+        st.stop()
+
+    st.title("Clinical timeline")
+
+    # Convert data into a DataFrame
+    df = pd.DataFrame(data)
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    # Initialize session state for selected data if it doesn't exist
+    if "selected_data_index" not in st.session_state:
+        st.session_state.selected_data_index = None
+
+    # Sidebar-Filter hinzufügen (Zeitraum)
+    st.sidebar.header("Filter Options")
+
+    # Zeitraum-Filter (Start- und Enddatum)
+    start_date = st.sidebar.date_input("Start Date", value=df['Date'].min().date())
+    end_date = st.sidebar.date_input("End Date", value=df['Date'].max().date())
+
+    # Validierung des Zeitraums
+    if start_date > end_date:
+        st.sidebar.error("Start Date must be earlier than End Date.")
+        st.stop()
+
+    # Ressourcenfilter (z. B. nach Condition, MedicationRequest, etc.)
+    resource_types = df['Title'].unique()
+    selected_resources = st.sidebar.multiselect(
+        "Filter by Resource Type", options=resource_types, default=resource_types
+    )
+
+    # Nach Zeitraum und Ressourcentyp filtern
+    filtered_df = df[
+        (df['Date'] >= pd.Timestamp(start_date)) &
+        (df['Date'] <= pd.Timestamp(end_date)) &
+        (df['Title'].isin(selected_resources))
+    ]
+
+    # Plotly Timeline Diagramm erstellen
+    if not filtered_df.empty:
+        fig = px.scatter(
+            filtered_df,
+            x="Date",
+            y="Title",
+            text="Title",
+            title="FHIR Resource Timeline",
+            labels={"Date": "Date", "Title": "Resource Type"},
+            hover_data=["Details"]
+        )
+        fig.update_traces(marker=dict(size=12, opacity=0.7), mode="markers+text", textposition="top center")
+        fig.update_layout(clickmode="event+select")
+
+        # Zeitstrahl in Streamlit anzeigen
+        st.plotly_chart(fig)
+    else:
+        st.warning("No data available for the selected filters.")
+
 # Funktion zum Abrufen der Daten
 def fetch_fhir_data(url):
     response = requests.get(url)
@@ -41,9 +103,10 @@ def extract_timeline_data_observation(timeline_data, title, clinical_data):
     # extract date
     date = clinical_data["effectiveDateTime"]
 
-    timeline_data[title].append({
+    timeline_data.append({
+        "Title": "Observation",
         "Date": date,
-        "Laboratory": clinical_data["code"]["coding"][0]["display"],
+        "Details": clinical_data["code"]["coding"][0]["display"],
         "Value": str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"]
     })
 
@@ -53,9 +116,10 @@ def extract_timeline_data_encounter(timeline_data, title, clinical_data):
     date = clinical_data["authoredOn"]
     concept = clinical_data["medicationCodeableConcept"]
 
-    timeline_data[title].append({
+    timeline_data.append({
+        "Title": "Medication Request",
         "Date": date,
-        "Condition": concept["coding"][0]["display"]
+        "Details": concept["coding"][0]["display"]
 
     })
 
@@ -65,9 +129,10 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
     date = clinical_data["onsetDateTime"]
     code = clinical_data["code"]
 
-    timeline_data[title].append({
+    timeline_data.append({
+        "Title": "Condition",
         "Date": date,
-        "Diagnosis": code["coding"][0]["display"]
+        "Details": code["coding"][0]["display"]
     })
 
 # Streamlit App
@@ -78,11 +143,12 @@ composition_data = fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fh
 resource = composition_data["entry"][0]["resource"]
 st.title(resource["title"])
 
-timeline_data = {
-        "Medication Summary": [],
-        "Problems Summary": [],
-        "Results Summary": []
-    }
+#timeline_data = {
+#        "Medication Summary": [],
+#        "Problems Summary": [],
+#        "Results Summary": []
+#}
+timeline_data = []
 
 for section in resource["section"]:
     if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary":
@@ -100,17 +166,18 @@ for section in resource["section"]:
 # ressource['title']
 # UC4-Patient
 
+print_timeline(timeline_data)
 
 # Zeitstrahl für jede Kategorie
-for category in ["Medication Summary", "Problems Summary", "Results Summary"]:
-    st.header(category)
+#for category in ["Medication Summary", "Problems Summary", "Results Summary"]:
+#    st.header(category)
     
     # Daten in DataFrame formatieren
-    data = pd.DataFrame(timeline_data[category])
-    if not data.empty:
-        st.write(data)
+#    data = pd.DataFrame(timeline_data[category])
+#    if not data.empty:
+#        st.write(data)
         
         # Zeitstrahl plotten
-        st.line_chart(data.set_index("Date"))
-    else:
-        st.write("Keine Daten verfügbar.")
+#        st.line_chart(data.set_index("Date"))
+#    else:
+#        st.write("Keine Daten verfügbar.")
