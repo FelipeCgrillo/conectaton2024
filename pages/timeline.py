@@ -56,7 +56,7 @@ def print_timeline(data):
             filtered_df,
             x="Date",
             y="Title",
-            text="Title",
+            text="Name",
             labels={"Date": "Date", "Title": "Resource Type"},
             hover_data=["Details"]
         )
@@ -104,6 +104,7 @@ def extract_timeline_data_observation(timeline_data, title, clinical_data):
 
     timeline_data.append({
         "Title": "Observation",
+        "Name": clinical_data["code"]["coding"][0]["display"],
         "Date": date,
         "Details": clinical_data["code"]["coding"][0]["display"],
         "Value": str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"]
@@ -117,6 +118,7 @@ def extract_timeline_data_encounter(timeline_data, title, clinical_data):
 
     timeline_data.append({
         "Title": "Medication Request",
+        "Name": concept["coding"][0]["display"],
         "Date": date,
         "Details": concept["coding"][0]["display"]
 
@@ -130,6 +132,7 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
 
     timeline_data.append({
         "Title": "Condition",
+        "Name": code["coding"][0]["display"],
         "Date": date,
         "Details": code["coding"][0]["display"]
     })
@@ -142,11 +145,6 @@ composition_data = fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fh
 resource = composition_data["entry"][0]["resource"]
 st.title(resource["title"])
 
-#timeline_data = {
-#        "Medication Summary": [],
-#        "Problems Summary": [],
-#        "Results Summary": []
-#}
 timeline_data = []
 
 for section in resource["section"]:
