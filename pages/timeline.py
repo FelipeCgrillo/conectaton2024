@@ -5,7 +5,7 @@ import plotly.express as px
 import requests
 from fhir.resources.composition import Composition
 
-patient_id = st.session_state.pop('patient_id', None)
+patient_id = st.session_state.get('patient_id', None)
 
 def print_timeline(data):
     menu_with_redirect()
@@ -67,6 +67,31 @@ def print_timeline(data):
         st.plotly_chart(fig)
     else:
         st.warning("No data available for the selected filters.")
+
+    # Glucose values chart
+    glucose_df = df[df['Title'] == "Observation"]
+    glucose_df = glucose_df[glucose_df['Name'].str.contains("Glucose", case=False)]
+
+    if not glucose_df.empty:
+        glucose_df['Value'] = glucose_df['Value'].str.extract('(\d+\.?\d*)').astype(float)  # Extract numeric values
+        glucose_df['Status'] = glucose_df['Value'].apply(
+            lambda x: 'Normal' if 70 <= x <= 140 else 'Abnormal'
+        )
+
+        fig_glucose = px.line(
+            glucose_df,
+            x="Date",
+            y="Value",
+            color="Status",
+            color_discrete_map={"Normal": "green", "Abnormal": "red"},
+            markers=True,
+            labels={"Value": "Glucose Level", "Date": "Date"},
+            title="Glucose Levels Over Time"
+        )
+        fig_glucose.update_layout(showlegend=True)
+        st.plotly_chart(fig_glucose)
+    else:
+        st.info("No Glucose data available.")
 
 # Funktion zum Abrufen der Daten
 def fetch_fhir_data(url):
@@ -142,6 +167,10 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
 
 # Daten abrufen
 composition_data = fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
+if not composition_data or "entry" not in composition_data:
+    st.error("No data found for the patient. Please check the patient ID or data source.")
+    st.stop()
+
 resource = composition_data["entry"][0]["resource"]
 st.title(resource["title"])
 
