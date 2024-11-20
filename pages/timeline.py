@@ -94,12 +94,21 @@ def print_timeline(data):
         # Verbindungslinien entfernen
         fig_glucose.update_traces(mode='markers')
 
+        # Berechne den minimalen und maximalen Wert der Zeitachse
+        min_date = glucose_df['Date'].min()
+        max_date = glucose_df['Date'].max()
+
+        # Füge Puffer für die X-Achse hinzu (5% der Zeitspanne vor und nach dem tatsächlichen Zeitraum)
+        buffer_days = (max_date - min_date) * 0.05  # 5% Puffer
+        min_date_with_buffer = min_date - buffer_days
+        max_date_with_buffer = max_date + buffer_days
+
         fig_glucose.update_layout(
             shapes=[
                 # Normalbereich (< 140 mg/dL) in hellgrün
                 dict(
                     type="rect",
-                    x0=glucose_df['Date'].min(), x1=glucose_df['Date'].max(),
+                    x0=min_date_with_buffer, x1=max_date_with_buffer,
                     y0=0, y1=140,
                     fillcolor="lightgreen",
                     opacity=0.2,
@@ -108,7 +117,7 @@ def print_timeline(data):
                 # Marginalbereich (140-199 mg/dL) in hellorange
                 dict(
                     type="rect",
-                    x0=glucose_df['Date'].min(), x1=glucose_df['Date'].max(),
+                    x0=min_date_with_buffer, x1=max_date_with_buffer,
                     y0=140, y1=200,
                     fillcolor="lightgoldenrodyellow",
                     opacity=0.2,
@@ -117,13 +126,14 @@ def print_timeline(data):
                 # Abnormalbereich (>= 200 mg/dL) in hellrot
                 dict(
                     type="rect",
-                    x0=glucose_df['Date'].min(), x1=glucose_df['Date'].max(),
+                    x0=min_date_with_buffer, x1=max_date_with_buffer,
                     y0=200, y1=glucose_df['Value'].max(),  # Y-Wert bis zum maximalen Glukosewert
                     fillcolor="lightcoral",
                     opacity=0.2,
                     line_width=0
                 )
-            ]
+            ],
+            #xaxis=dict(range=[glucose_df['Date'].min(), glucose_df['Date'].max()])
         )
 
         # Diagramm anpassen und anzeigen
@@ -201,9 +211,6 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
         "Details": code["coding"][0]["display"]
     })
 
-# Streamlit App
-#st.title("FHIR IPS Composition Zeitstrahl")
-
 # Daten abrufen
 composition_data = fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
 if not composition_data or "entry" not in composition_data:
@@ -226,23 +233,5 @@ for section in resource["section"]:
             if section["title"] == "Results Summary":
                 extract_timeline_data_observation(timeline_data, section["title"], clinical_data)
 
-
-#st.write(composition_data)
-# ressource['title']
-# UC4-Patient
-
 print_timeline(timeline_data)
 
-# Zeitstrahl für jede Kategorie
-#for category in ["Medication Summary", "Problems Summary", "Results Summary"]:
-#    st.header(category)
-    
-    # Daten in DataFrame formatieren
-#    data = pd.DataFrame(timeline_data[category])
-#    if not data.empty:
-#        st.write(data)
-        
-        # Zeitstrahl plotten
-#        st.line_chart(data.set_index("Date"))
-#    else:
-#        st.write("Keine Daten verfügbar.")
