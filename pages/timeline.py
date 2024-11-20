@@ -58,9 +58,16 @@ def print_timeline(data):
             y="Title",
             text="Name",
             labels={"Date": "Date", "Title": "Resource Type"},
-            hover_data=["Details"]
+            hover_data=["Name"]
         )
-        fig.update_traces(marker=dict(size=12, opacity=0.7), mode="markers+text", textposition="top center")
+        # Hier können wir das Symbol anstelle des Namens verwenden, wenn vorhanden
+        fig.update_traces(
+            text=filtered_df["Symbol"].where(filtered_df["Symbol"] != "", filtered_df["Name"]),
+            marker=dict(size=12, opacity=0.7),
+            mode="markers+text",
+            textposition="top center"
+        )
+        #fig.update_traces(marker=dict(size=12, opacity=0.7), mode="markers+text", textposition="top center")
         fig.update_layout(clickmode="event+select")
 
         # Zeitstrahl in Streamlit anzeigen
@@ -175,13 +182,21 @@ def search_for_clinical_data(request):
 def extract_timeline_data_observation(timeline_data, title, clinical_data):
     # extract date
     date = clinical_data["effectiveDateTime"]
+    observation_name = clinical_data["code"]["coding"][0]["display"]
+    symbol = ""
+
+    # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
+    if "Glucose" in observation_name:
+        symbol = "G"  # Glucose
+    elif "Hemoglobin" in observation_name:
+        symbol = "H"  # Hämoglobin
 
     timeline_data.append({
         "Title": "Observation",
-        "Name": clinical_data["code"]["coding"][0]["display"],
+        "Name": observation_name,
         "Date": date,
-        "Details": clinical_data["code"]["coding"][0]["display"],
-        "Value": str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"]
+        "Value": str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"],
+        "Symbol": symbol
     })
 
 # Daten für Zeitstrahl extrahieren für Medication Summary
@@ -189,12 +204,20 @@ def extract_timeline_data_encounter(timeline_data, title, clinical_data):
     # extract date
     date = clinical_data["authoredOn"]
     concept = clinical_data["medicationCodeableConcept"]
+    encounter_name = concept["coding"][0]["display"]
+    symbol = ""
+
+    # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
+    if "Glucose" in encounter_name:
+        symbol = "G"  # Glucose
+    elif "Hemoglobin" in encounter_name:
+        symbol = "H"  # Hämoglobin
 
     timeline_data.append({
         "Title": "Medication Request",
-        "Name": concept["coding"][0]["display"],
+        "Name": encounter_name,
         "Date": date,
-        "Details": concept["coding"][0]["display"]
+        "Symbol": symbol
 
     })
 
@@ -203,12 +226,20 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
     # extract date
     date = clinical_data["onsetDateTime"]
     code = clinical_data["code"]
+    condition_name= code["coding"][0]["display"]
+    symbol = ""
+
+    # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
+    if "Glucose" in condition_name:
+        symbol = "G"  # Glucose
+    elif "Hemoglobin" in condition_name:
+        symbol = "H"  # Hämoglobin
 
     timeline_data.append({
         "Title": "Condition",
-        "Name": code["coding"][0]["display"],
+        "Name": condition_name,
         "Date": date,
-        "Details": code["coding"][0]["display"]
+        "Symbol": symbol
     })
 
 # Daten abrufen
