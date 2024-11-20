@@ -75,7 +75,7 @@ def print_timeline(data):
     if not glucose_df.empty:
         glucose_df['Value'] = glucose_df['Value'].str.extract('(\d+\.?\d*)').astype(float)  # Extract numeric values
         glucose_df['Status'] = glucose_df['Value'].apply(
-            lambda x: 'Normal' if 70 <= x <= 140 else 'Abnormal'
+            lambda x: 'Normal (< 140 mg/dL)' if x < 140 else ('Marginal (140-199 mg/dL)' if 140 <= x <= 199 else 'Abnormal (>= 200 mg/dL)')
         )
 
         fig_glucose = px.line(
@@ -83,11 +83,50 @@ def print_timeline(data):
             x="Date",
             y="Value",
             color="Status",
-            color_discrete_map={"Normal": "green", "Abnormal": "red"},
+            color_discrete_map={"Normal (< 140 mg/dL)": "green","Marginal (140-199 mg/dL)": "orange", "Abnormal (>= 200 mg/dL)": "red"},
             markers=True,
             labels={"Value": "Glucose Level", "Date": "Date"},
             title="Glucose Levels Over Time"
         )
+        # Punkte dicker machen
+        fig_glucose.update_traces(marker=dict(size=10))  # Punktgröße erhöhen
+
+        # Verbindungslinien entfernen
+        fig_glucose.update_traces(mode='markers')
+
+        fig_glucose.update_layout(
+            shapes=[
+                # Normalbereich (< 140 mg/dL) in hellgrün
+                dict(
+                    type="rect",
+                    x0=glucose_df['Date'].min(), x1=glucose_df['Date'].max(),
+                    y0=0, y1=140,
+                    fillcolor="lightgreen",
+                    opacity=0.2,
+                    line_width=0
+                ),
+                # Marginalbereich (140-199 mg/dL) in hellorange
+                dict(
+                    type="rect",
+                    x0=glucose_df['Date'].min(), x1=glucose_df['Date'].max(),
+                    y0=140, y1=200,
+                    fillcolor="lightgoldenrodyellow",
+                    opacity=0.2,
+                    line_width=0
+                ),
+                # Abnormalbereich (>= 200 mg/dL) in hellrot
+                dict(
+                    type="rect",
+                    x0=glucose_df['Date'].min(), x1=glucose_df['Date'].max(),
+                    y0=200, y1=glucose_df['Value'].max(),  # Y-Wert bis zum maximalen Glukosewert
+                    fillcolor="lightcoral",
+                    opacity=0.2,
+                    line_width=0
+                )
+            ]
+        )
+
+        # Diagramm anpassen und anzeigen
         fig_glucose.update_layout(showlegend=True)
         st.plotly_chart(fig_glucose)
     else:
