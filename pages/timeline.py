@@ -21,6 +21,30 @@ def print_timeline(data):
     df = pd.DataFrame(data)
     df['Date'] = pd.to_datetime(df['Date'])
 
+    # Add color
+    df['Color'] = "Neutral"
+
+    if 'Observation - Glucose Level' in df['Title'].values:
+        glucose_df_timeline = df[df['Title'] == "Observation - Glucose Level"]
+        glucose_df_timeline['Value'] = glucose_df_timeline['Value'].str.extract(r'(\d+\.?\d*)').astype(float)  # Extract numeric values
+        glucose_df_timeline['Status'] = glucose_df_timeline['Value'].apply(
+            lambda x: 'Normal (< 140 mg/dL)' if x < 140 else (
+                'Marginal (140-199 mg/dL)' if 140 <= x <= 199 else 'Abnormal (>= 200 mg/dL)'
+            )
+        )
+        
+        df.loc[glucose_df_timeline.index, 'Color'] = glucose_df_timeline['Status']
+    else:
+        df['Color'] = "Neutral"  # Standardfarbe für andere Daten
+
+    # Farbzuordnung für die Timeline
+    color_map = {
+        'Normal (< 140 mg/dL)': 'green',  # Grün
+        'Marginal (140-199 mg/dL)': 'orange',  # Orange
+        'Abnormal (>= 200 mg/dL)': 'red',  # Rot
+        'Neutral': 'blue'  # Blau
+    }
+
     # Initialize session state for selected data if it doesn't exist
     if "selected_data_index" not in st.session_state:
         st.session_state.selected_data_index = None
@@ -58,6 +82,8 @@ def print_timeline(data):
             filtered_df,
             x="Date",
             y="Title",
+            color="Color",
+            color_discrete_map=color_map,  # Farbskala manuell zuweisen
             #text="Name",
             labels={"Date": "Date", "Title": "Resource Type"},
             hover_data=["Name", "Exact Date"]
