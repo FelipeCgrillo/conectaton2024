@@ -5,11 +5,6 @@ import plotly.express as px
 
 menu_with_redirect()
 
-# Verify the user's role
-if not st.session_state.found_patient:
-    st.warning("No patient found.")
-    st.stop()
-
 st.title("Clinical timeline")
 
 # Sample FHIR resource data
