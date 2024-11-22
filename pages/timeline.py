@@ -50,19 +50,21 @@ def print_timeline(data):
         (df['Title'].isin(selected_resources))
     ]
 
+    filtered_df['Exact Date'] = filtered_df['Date'].dt.strftime('%B %d, %Y')
+
     # Plotly Timeline Diagramm erstellen
     if not filtered_df.empty:
         fig = px.scatter(
             filtered_df,
             x="Date",
             y="Title",
-            text="Name",
+            #text="Name",
             labels={"Date": "Date", "Title": "Resource Type"},
-            hover_data=["Name"]
+            hover_data=["Name", "Exact Date"]
         )
         # Hier können wir das Symbol anstelle des Namens verwenden, wenn vorhanden
         fig.update_traces(
-            text=filtered_df["Symbol"].where(filtered_df["Symbol"] != "", filtered_df["Name"]),
+            #text=filtered_df["Symbol"].where(filtered_df["Symbol"] != "", filtered_df["Name"]),
             marker=dict(size=12, opacity=0.7),
             mode="markers+text",
             textposition="top center"
@@ -76,8 +78,9 @@ def print_timeline(data):
         st.warning("No data available for the selected filters.")
 
     # Glucose values chart
-    glucose_df = df[df['Title'] == "Observation"]
+    glucose_df = df[df['Title'] == "Observation - Glucose Level"]
     glucose_df = glucose_df[glucose_df['Name'].str.contains("Glucose", case=False)]
+    glucose_df['Exact Date'] = df['Date'].dt.strftime('%B %d, %Y')
 
     if not glucose_df.empty:
         glucose_df['Value'] = glucose_df['Value'].str.extract('(\d+\.?\d*)').astype(float)  # Extract numeric values
@@ -93,7 +96,8 @@ def print_timeline(data):
             color_discrete_map={"Normal (< 140 mg/dL)": "green","Marginal (140-199 mg/dL)": "orange", "Abnormal (>= 200 mg/dL)": "red"},
             markers=True,
             labels={"Value": "Glucose Level", "Date": "Date"},
-            title="Glucose Levels Over Time"
+            title="Glucose Levels Over Time",
+            hover_data=["Exact Date"]
         )
         # Punkte dicker machen
         fig_glucose.update_traces(marker=dict(size=10))  # Punktgröße erhöhen
@@ -159,14 +163,6 @@ def fetch_fhir_data(url):
         return None
 
 def search_for_clinical_data(request):
-    """
-    Search for medication requests associated with a patient.
-    
-    Args:
-        patient_id (str): The patient's ID
-    Returns:
-        list: List of medication requests or empty list if none found
-    """
     try:
         url = f"https://ips-challenge.it.hs-heilbronn.de/fhir/{request}"
         response = requests.get(url)
@@ -187,16 +183,15 @@ def extract_timeline_data_observation(timeline_data, title, clinical_data):
 
     # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
     if "Glucose" in observation_name:
-        symbol = "G"  # Glucose
+        symbol = "Glucose Level"  # Glucose
     elif "Hemoglobin" in observation_name:
-        symbol = "H"  # Hämoglobin
+        symbol = "Hemoglobin in Blood"  # Hämoglobin
 
     timeline_data.append({
-        "Title": "Observation",
+        "Title": "Observation" + " - " + symbol,
         "Name": observation_name,
         "Date": date,
-        "Value": str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"],
-        "Symbol": symbol
+        "Value": str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"]
     })
 
 # Daten für Zeitstrahl extrahieren für Medication Summary
@@ -205,19 +200,11 @@ def extract_timeline_data_encounter(timeline_data, title, clinical_data):
     date = clinical_data["authoredOn"]
     concept = clinical_data["medicationCodeableConcept"]
     encounter_name = concept["coding"][0]["display"]
-    symbol = ""
-
-    # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
-    if "Glucose" in encounter_name:
-        symbol = "G"  # Glucose
-    elif "Hemoglobin" in encounter_name:
-        symbol = "H"  # Hämoglobin
 
     timeline_data.append({
         "Title": "Medication Request",
         "Name": encounter_name,
-        "Date": date,
-        "Symbol": symbol
+        "Date": date
 
     })
 
@@ -227,19 +214,11 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
     date = clinical_data["onsetDateTime"]
     code = clinical_data["code"]
     condition_name= code["coding"][0]["display"]
-    symbol = ""
-
-    # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
-    if "Glucose" in condition_name:
-        symbol = "G"  # Glucose
-    elif "Hemoglobin" in condition_name:
-        symbol = "H"  # Hämoglobin
 
     timeline_data.append({
         "Title": "Condition",
         "Name": condition_name,
-        "Date": date,
-        "Symbol": symbol
+        "Date": date
     })
 
 # Daten abrufen
