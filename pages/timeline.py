@@ -11,7 +11,7 @@ def print_timeline(data):
     menu_with_redirect()
 
     # Verify the user's role
-    if not st.session_state.found_patient:
+    if not st.session_state.patient_id:
         st.warning("No patient found.")
         st.stop()
 
