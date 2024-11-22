@@ -270,4 +270,3 @@ for section in resource["section"]:
                 extract_timeline_data_observation(timeline_data, section["title"], clinical_data)
 
 print_timeline(timeline_data)
-
