@@ -6,10 +6,10 @@ import requests
 from fhir.resources.composition import Composition
 
 patient_id = st.session_state.get('patient_id', None)
+menu_with_redirect()
 
 def print_timeline(data):
-    menu_with_redirect()
-
+    
     # Verify the user's role
     if not st.session_state.patient_id:
         st.warning("No patient found.")
@@ -23,6 +23,15 @@ def print_timeline(data):
 
     # Add color
     df['Color'] = "Neutral"
+    # Add symbol
+    df['Symbol'] = "circle"
+
+    style_map = {
+        'Normal (< 140 mg/dL)': {'color': 'green', 'symbol': 'square'},  # Grün und Viereck
+        'Marginal (140-199 mg/dL)': {'color': 'orange', 'symbol': 'triangle-up'},  # Orange und Dreieck
+        'Abnormal (>= 200 mg/dL)': {'color': 'red', 'symbol': 'star'},  # Rot und Stern
+        'Neutral': {'color': 'blue', 'symbol': 'circle'}  # Blau und Kreis
+    }
 
     if 'Observation - Glucose Level' in df['Title'].values:
         glucose_df_timeline = df[df['Title'] == "Observation - Glucose Level"]
@@ -32,18 +41,18 @@ def print_timeline(data):
                 'Marginal (140-199 mg/dL)' if 140 <= x <= 199 else 'Abnormal (>= 200 mg/dL)'
             )
         )
+        # Zuweisung von Farben und Symbolen basierend auf Status
+        glucose_df_timeline['Color'] = glucose_df_timeline['Status'].map(lambda x: style_map[x]['color']).fillna('blue')
+        glucose_df_timeline['Symbol'] = glucose_df_timeline['Status'].map(lambda x: style_map[x]['symbol']).fillna('circle')
+
+        # Werte in das Haupt-DataFrame übernehmen
+        df.loc[glucose_df_timeline.index, 'Color'] = glucose_df_timeline['Color']
+        df.loc[glucose_df_timeline.index, 'Symbol'] = glucose_df_timeline['Symbol']
         
         df.loc[glucose_df_timeline.index, 'Color'] = glucose_df_timeline['Status']
     else:
         df['Color'] = "Neutral"  # Standardfarbe für andere Daten
-
-    # Farbzuordnung für die Timeline
-    color_map = {
-        'Normal (< 140 mg/dL)': 'green',  # Grün
-        'Marginal (140-199 mg/dL)': 'orange',  # Orange
-        'Abnormal (>= 200 mg/dL)': 'red',  # Rot
-        'Neutral': 'blue'  # Blau
-    }
+        df['Symbol'] = "circle"
 
     # Initialize session state for selected data if it doesn't exist
     if "selected_data_index" not in st.session_state:
@@ -83,20 +92,26 @@ def print_timeline(data):
             x="Date",
             y="Title",
             color="Color",
-            color_discrete_map=color_map,  # Farbskala manuell zuweisen
-            #text="Name",
-            labels={"Date": "Date", "Title": "Resource Type"},
+            symbol="Symbol",  # Form der Punkte
+            color_discrete_map={key: val['color'] for key, val in style_map.items()},  # Farbskala
+            symbol_map={key: val['symbol'] for key, val in style_map.items()},
+            labels={"Date": "Date", "Title": "Resource Type", "Color": "Legend"},
             hover_data=["Name", "Exact Date"]
         )
-        # Hier können wir das Symbol anstelle des Namens verwenden, wenn vorhanden
+        
         fig.update_traces(
             #text=filtered_df["Symbol"].where(filtered_df["Symbol"] != "", filtered_df["Name"]),
             marker=dict(size=12, opacity=0.7),
             mode="markers+text",
             textposition="top center"
         )
-        #fig.update_traces(marker=dict(size=12, opacity=0.7), mode="markers+text", textposition="top center")
-        fig.update_layout(clickmode="event+select")
+        
+        fig.update_layout(clickmode="event+select", legend=dict(
+                                                            x=0.5,  # Zentriert horizontal
+                                                            y=-0.5,  # Oberhalb des Diagramms
+                                                            orientation="h",  # Horizontal
+                                                        )
+        )
 
         # Zeitstrahl in Streamlit anzeigen
         st.plotly_chart(fig)

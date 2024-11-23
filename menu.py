@@ -10,6 +10,7 @@ def authenticated_menu():
     st.sidebar.page_link("pages/reports_results.py", label="Reports & Results")
     st.sidebar.page_link("pages/new_event.py", label="New Event")
     st.sidebar.page_link("pages/timeline.py", label="Clinical Timeline")
+    st.sidebar.page_link("pages/laboratory.py", label="Laboratory Results")
 #    if st.session_state.patient_id in ["admin", "super-admin"]:
 #        st.sidebar.page_link("pages/admin.py", label="Manage users")
 #        st.sidebar.page_link(
