@@ -11,7 +11,7 @@ menu_with_redirect()
 
 st.title("Laboratory Results")
 
-def print_diagrams(data):
+def print_diagram_glucose(data):
 
     # Convert data into a DataFrame
     df = pd.DataFrame(data)
@@ -98,6 +98,75 @@ def print_diagrams(data):
     else:
         st.info("No Glucose data available.")
 
+def print_diagram_hemoglobin(data):
+    # Convert data into a DataFrame
+    df = pd.DataFrame(data)
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    # Glucose values chart
+    hemoglobin_df = df[df['Title'] == "Observation - Hemoglobin in Blood"]
+    hemoglobin_df = hemoglobin_df[hemoglobin_df['Name'].str.contains("Hemoglobin", case=False)]
+    
+    if not hemoglobin_df.empty:
+        hemoglobin_df['Value'] = hemoglobin_df['Value'].str.extract('(\d+\.?\d*)').astype(float)  # Extract numeric values
+        hemoglobin_df['Exact Date'] = hemoglobin_df['Date'].dt.strftime('%B %d, %Y')
+        
+        # Categorize values
+        def categorize_hba1c(value):
+            if value <= 5.6:
+                return 'Normal (20–38 mmol/mol)'
+            elif 5.6 < value <= 6.4:
+                return 'Marginal (39–47 mmol/mol)'
+            else:
+                return 'Abnormal (> 48 mmol/mol)'
+
+        hemoglobin_df['Status'] = hemoglobin_df['Value'].apply(categorize_hba1c)
+
+        # Plotly chart
+        fig_glucose = px.line(
+            hemoglobin_df,
+            x="Date",
+            y="Value",
+            color="Status",
+            color_discrete_map={
+                "Normal (20–38 mmol/mol)": "green",
+                "Marginal (39–47 mmol/mol)": "orange",
+                "Abnormal (> 48 mmol/mol)": "red"
+            },
+            markers=True,
+            labels={"Value": "Hemoglobin Level", "Date": "Date"},
+            title="Hemoglobin Levels Over Time",
+            hover_data=["Exact Date"]
+        )
+        
+        # Punktgröße erhöhen
+        fig_glucose.update_traces(marker=dict(size=10), mode='markers')
+
+        # Puffer für X-Achse
+        min_date = hemoglobin_df['Date'].min()
+        max_date = hemoglobin_df['Date'].max()
+        buffer_days = pd.Timedelta(days=(max_date - min_date).days * 0.05)
+        min_date_with_buffer = min_date - buffer_days
+        max_date_with_buffer = max_date + buffer_days
+
+        # Markierungsbereiche
+        fig_glucose.update_layout(
+            shapes=[
+                dict(type="rect", x0=min_date_with_buffer, x1=max_date_with_buffer,
+                     y0=4.0, y1=5.7, fillcolor="lightgreen", opacity=0.2, line_width=0),
+                dict(type="rect", x0=min_date_with_buffer, x1=max_date_with_buffer,
+                     y0=5.7, y1=6.5, fillcolor="lightgoldenrodyellow", opacity=0.2, line_width=0),
+                dict(type="rect", x0=min_date_with_buffer, x1=max_date_with_buffer,
+                     y0=6.5, y1=hemoglobin_df['Value'].max() if not hemoglobin_df.empty else 7.0,
+                     fillcolor="lightcoral", opacity=0.2, line_width=0)
+            ]
+        )
+
+        # Diagramm anzeigen
+        st.plotly_chart(fig_glucose)
+    else:
+        st.info("No Hemoglobin data available.")
+
 def search_for_clinical_data(request):
     try:
         url = f"https://ips-challenge.it.hs-heilbronn.de/fhir/{request}"
@@ -166,4 +235,5 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
         "Date": date
     })
 
-print_diagrams(timeline_data)
+print_diagram_glucose(timeline_data)
+print_diagram_hemoglobin(timeline_data)
