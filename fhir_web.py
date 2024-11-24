@@ -826,6 +826,74 @@ def generate_patient_qr(patient_id):
     img_byte_arr.seek(0)
     return img_byte_arr
 
+def search_for_clinical_data(request):
+    try:
+        url = f"https://ips-challenge.it.hs-heilbronn.de/fhir/{request}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()
+
+        return []
+    except requests.RequestException as e:
+        st.error(f"Error fetching medications: {e}")
+        return []
+
+# Funktion zum Abrufen der Daten
+def fetch_fhir_data(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Fehler beim Abrufen der Daten: {response.status_code}")
+        return None
+
+# Daten für Zeitstrahl extrahieren für Results Summary
+def extract_timeline_data_observation(timeline_data, title, clinical_data):
+    # extract date
+    date = clinical_data["effectiveDateTime"]
+    observation_name = clinical_data["code"]["coding"][0]["display"]
+    symbol = ""
+
+    # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
+    if "Glucose" in observation_name:
+        symbol = "Glucose Level"  # Glucose
+    elif "Hemoglobin" in observation_name:
+        symbol = "Hemoglobin in Blood"  # Hämoglobin
+
+    timeline_data.append({
+        "Title": "Observation" + " - " + symbol,
+        "Name": observation_name,
+        "Date": date,
+        "Value": str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"]
+    })
+
+# Daten für Zeitstrahl extrahieren für Medication Summary
+def extract_timeline_data_encounter(timeline_data, title, clinical_data):
+    # extract date
+    date = clinical_data["authoredOn"]
+    concept = clinical_data["medicationCodeableConcept"]
+    encounter_name = concept["coding"][0]["display"]
+
+    timeline_data.append({
+        "Title": "Medication Request",
+        "Name": encounter_name,
+        "Date": date
+
+    })
+
+# Daten für Zeitstrahl extrahieren für Problems Summary
+def extract_timeline_data_condition(timeline_data, title, clinical_data):
+    # extract date
+    date = clinical_data["onsetDateTime"]
+    code = clinical_data["code"]
+    condition_name= code["coding"][0]["display"]
+
+    timeline_data.append({
+        "Title": "Condition",
+        "Name": condition_name,
+        "Date": date
+    })
+    
 def main():
     """
     Main Streamlit application function
@@ -892,6 +960,32 @@ def main():
                 file_name=f"patient_{patient_id}_qr.png",
                 mime="image/png"
             )
+
+    # Daten abrufen
+    composition_data = fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
+    if not composition_data or "entry" not in composition_data:
+        st.error("No data found for the patient. Please check the patient ID or data source.")
+        st.stop()
+
+    resource = composition_data["entry"][0]["resource"]
+    #st.title(resource["title"])
+
+    timeline_data = []
+
+    for section in resource["section"]:
+        if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary":
+            for entry in section["entry"]:
+                clinical_data = search_for_clinical_data(entry["reference"]) # clinical data ist nun ein json aus EINER observation
+                if section["title"] == "Medication Summary":
+                    extract_timeline_data_encounter(timeline_data, section["title"], clinical_data) # füge diese observation in die timeline ein
+                if section["title"] == "Problems Summary":
+                    extract_timeline_data_condition(timeline_data, section["title"], clinical_data)
+                if section["title"] == "Results Summary":
+                    extract_timeline_data_observation(timeline_data, section["title"], clinical_data)
+
+    st.session_state['laboratory_data'] = timeline_data
+
+    # Menu
     menu()
 
 # Run the Streamlit app

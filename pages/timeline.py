@@ -6,6 +6,7 @@ import requests
 from fhir.resources.composition import Composition
 
 patient_id = st.session_state.get('patient_id', None)
+timeline_data = st.session_state.get('laboratory_data', None)
 menu_with_redirect()
 
 def print_timeline(data):
@@ -187,25 +188,25 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
     })
 
 # Daten abrufen
-composition_data = fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
-if not composition_data or "entry" not in composition_data:
-    st.error("No data found for the patient. Please check the patient ID or data source.")
-    st.stop()
+#composition_data = fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
+#if not composition_data or "entry" not in composition_data:
+#    st.error("No data found for the patient. Please check the patient ID or data source.")
+#    st.stop()
 
-resource = composition_data["entry"][0]["resource"]
+#resource = composition_data["entry"][0]["resource"]
 #st.title(resource["title"])
 
-timeline_data = []
+#timeline_data = []
 
-for section in resource["section"]:
-    if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary":
-        for entry in section["entry"]:
-            clinical_data = search_for_clinical_data(entry["reference"]) # clinical data ist nun ein json aus EINER observation
-            if section["title"] == "Medication Summary":
-                extract_timeline_data_encounter(timeline_data, section["title"], clinical_data) # füge diese observation in die timeline ein
-            if section["title"] == "Problems Summary":
-                extract_timeline_data_condition(timeline_data, section["title"], clinical_data)
-            if section["title"] == "Results Summary":
-                extract_timeline_data_observation(timeline_data, section["title"], clinical_data)
+#for section in resource["section"]:
+#    if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary":
+#        for entry in section["entry"]:
+#            clinical_data = search_for_clinical_data(entry["reference"]) # clinical data ist nun ein json aus EINER observation
+#            if section["title"] == "Medication Summary":
+#                extract_timeline_data_encounter(timeline_data, section["title"], clinical_data) # füge diese observation in die timeline ein
+#            if section["title"] == "Problems Summary":
+#                extract_timeline_data_condition(timeline_data, section["title"], clinical_data)
+#            if section["title"] == "Results Summary":
+#                extract_timeline_data_observation(timeline_data, section["title"], clinical_data)
 
 print_timeline(timeline_data)
