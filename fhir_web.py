@@ -906,15 +906,22 @@ def main():
     timeline_data = []
 
     for section in resource["section"]:
-        if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary":
+        if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary" or section["title"] == "Allergies Summary" or section["title"] == "Vital Signs Summary" or section["title"] == "Social History Summary":
             for entry in section["entry"]:
-                clinical_data = calculation_data.search_for_clinical_data(entry["reference"]) # clinical data ist nun ein json aus EINER observation
-                if section["title"] == "Medication Summary":
-                    calculation_data.extract_timeline_data_encounter(timeline_data, section["title"], clinical_data) # füge diese observation in die timeline ein
-                if section["title"] == "Problems Summary":
-                    calculation_data.extract_timeline_data_condition(timeline_data, section["title"], clinical_data)
-                if section["title"] == "Results Summary":
-                    calculation_data.extract_timeline_data_observation(timeline_data, section["title"], clinical_data)
+                if "reference" in entry:
+                    clinical_data = calculation_data.search_for_clinical_data(entry["reference"]) # clinical data ist nun ein json aus EINER observation
+                    if section["title"] == "Medication Summary":
+                        calculation_data.extract_timeline_data_encounter(timeline_data, clinical_data) # füge diese observation in die timeline ein
+                    if section["title"] == "Problems Summary":
+                        calculation_data.extract_timeline_data_condition(timeline_data, clinical_data)
+                    if section["title"] == "Results Summary":
+                        calculation_data.extract_timeline_data_observation(timeline_data, clinical_data)
+                    if section["title"] == "Allergies Summary":
+                        calculation_data.extract_timeline_data_intolerance(timeline_data, clinical_data)
+                    if section["title"] == "Vital Signs Summary":
+                        continue
+                    if section["title"] == "Social History Summary":
+                        continue
 
     st.session_state['laboratory_data'] = timeline_data
 

@@ -25,7 +25,7 @@ def fetch_fhir_data(url):
         return None
 
 # Daten für Zeitstrahl extrahieren für Results Summary
-def extract_timeline_data_observation(timeline_data, title, clinical_data):
+def extract_timeline_data_observation(timeline_data, clinical_data):
     # extract date
     date = clinical_data["effectiveDateTime"]
     observation_name = clinical_data["code"]["coding"][0]["display"]
@@ -37,15 +37,21 @@ def extract_timeline_data_observation(timeline_data, title, clinical_data):
     elif "Hemoglobin" in observation_name:
         symbol = "Hemoglobin in Blood"  # Hämoglobin
 
+    value = ""
+    try:
+        value = str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"]
+    except KeyError:
+        value = "No value"
+
     timeline_data.append({
         "Title": "Observation" + " - " + symbol,
         "Name": observation_name,
         "Date": date,
-        "Value": str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"]
+        "Value": value
     })
 
 # Daten für Zeitstrahl extrahieren für Medication Summary
-def extract_timeline_data_encounter(timeline_data, title, clinical_data):
+def extract_timeline_data_encounter(timeline_data, clinical_data):
     # extract date
     date = clinical_data["authoredOn"]
     concept = clinical_data["medicationCodeableConcept"]
@@ -55,11 +61,10 @@ def extract_timeline_data_encounter(timeline_data, title, clinical_data):
         "Title": "Medication Request",
         "Name": encounter_name,
         "Date": date
-
     })
 
 # Daten für Zeitstrahl extrahieren für Problems Summary
-def extract_timeline_data_condition(timeline_data, title, clinical_data):
+def extract_timeline_data_condition(timeline_data, clinical_data):
     # extract date
     date = clinical_data["onsetDateTime"]
     code = clinical_data["code"]
@@ -69,4 +74,19 @@ def extract_timeline_data_condition(timeline_data, title, clinical_data):
         "Title": "Condition",
         "Name": condition_name,
         "Date": date
+    })
+
+# Daten für Zeitstrahl extrahieren für Allergies Summary
+def extract_timeline_data_intolerance(timeline_data, clinical_data):
+    # extract date
+    date = clinical_data["onsetDateTime"]
+    code = clinical_data["code"]
+    condition_name= code["coding"][0]["display"]
+
+    timeline_data.append({
+        "Title": "AllergyIntolerance",
+        "Name": condition_name,
+        "Date": date,
+        "Reaction": clinical_data["reaction"][0]["manifestation"][0]["coding"][0]["display"],
+        "Criticality": clinical_data["criticality"]
     })
