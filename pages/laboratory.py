@@ -10,6 +10,7 @@ menu_with_redirect()
 st.title("Laboratory Results")
 
 def print_diagram_glucose(data):
+    print(data)
     # Convert data into a DataFrame
     df = pd.DataFrame(data)
     df['Date'] = pd.to_datetime(df['Date'])

@@ -7,7 +7,8 @@ patient_id = st.session_state.get('patient_id', None)
 timeline_data = st.session_state.get('laboratory_data', None)
 menu_with_redirect()
 
-def print_timeline(data):    
+def print_timeline(data):
+    print(data)
     # Verify the user's role
     if not st.session_state.patient_id:
         st.warning("No patient found.")

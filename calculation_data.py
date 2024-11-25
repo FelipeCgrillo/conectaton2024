@@ -37,7 +37,7 @@ def extract_timeline_data_observation(timeline_data, clinical_data):
 
     value = ""
     try:
-        value = str(clinical_data["valueQuantity"]["value"]) + clinical_data["valueQuantity"]["code"]
+        value = str(clinical_data["valueQuantity"]["value"]) + " " + clinical_data["valueQuantity"]["code"]
     except KeyError:
         value = "No value"
 
@@ -79,12 +79,31 @@ def extract_timeline_data_intolerance(timeline_data, clinical_data):
     # extract date
     date = clinical_data["onsetDateTime"]
     code = clinical_data["code"]
-    condition_name= code["coding"][0]["display"]
+    intolerance_name= code["coding"][0]["display"]
 
     timeline_data.append({
         "Title": "AllergyIntolerance",
-        "Name": condition_name,
+        "Name": intolerance_name,
         "Date": date,
         "Reaction": clinical_data["reaction"][0]["manifestation"][0]["coding"][0]["display"],
         "Criticality": clinical_data["criticality"]
+    })
+
+def extract_timeline_data_vital(timeline_data, clinical_data):
+    # extract date
+    date = clinical_data["effectiveDateTime"]
+    code = clinical_data["code"]
+    vital_name= code["coding"][0]["display"]
+
+    value = ""
+    try:
+        value = str(clinical_data["valueQuantity"]["value"]) + " " + clinical_data["valueQuantity"]["code"]
+    except KeyError:
+        value = "No value"
+
+    timeline_data.append({
+        "Title": "Vital Signs",
+        "Name": vital_name,
+        "Date": date,
+        "Value": value
     })

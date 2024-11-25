@@ -859,8 +859,7 @@ def calculate_patient_data(patient_id):
                         if section["title"] == "Allergies Summary":
                             calculation_data.extract_timeline_data_intolerance(timeline_data, clinical_data)
                         if section["title"] == "Vital Signs Summary":
-                            continue # TODO
-                            # calculation_data.extract_timeline_data_vital(timeline_data, clinical_data)
+                            calculation_data.extract_timeline_data_vital(timeline_data, clinical_data)
                         if section["title"] == "Social History Summary":
                             continue # TODO
                             # calculation_data.extract_timeline_data_social(timeline_data, clinical_data)
@@ -871,8 +870,6 @@ def main():
     """
     Main Streamlit application function
     """
-
-    st.session_state["patient_id"] = None
 
     # Title of the application
     st.title("Patient Search Portal")
