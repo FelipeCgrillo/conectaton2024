@@ -8,7 +8,6 @@ timeline_data = st.session_state.get('laboratory_data', None)
 menu_with_redirect()
 
 def print_timeline(data):
-    print(data)
     # Verify the user's role
     if not st.session_state.patient_id:
         st.warning("No patient found.")
@@ -95,14 +94,30 @@ def print_timeline(data):
             color_discrete_map={key: val['color'] for key, val in style_map.items()},  # Farbskala
             symbol_map={key: val['symbol'] for key, val in style_map.items()},
             labels={"Date": "Date", "Title": "Resource Type", "Color": "Legend"},
-            hover_data=["Name", "Exact Date"]
+            custom_data=["Name", "Exact Date", "Value"],
+            hover_data={
+                "Symbol": False,  # Symbol-Spalte wird nicht angezeigt
+                "Name": True,
+                "Exact Date": True,
+                "Value": True
+            }
+        )
+
+        # Legenden-Einträge anpassen/entfernen
+        fig.for_each_trace(
+            lambda trace: trace.update(name=trace.name.split(",")[0])  # Entferne alles nach dem Komma (z. B. "Symbol")
         )
         
         fig.update_traces(
             #text=filtered_df["Symbol"].where(filtered_df["Symbol"] != "", filtered_df["Name"]),
             marker=dict(size=12, opacity=0.7),
             mode="markers+text",
-            textposition="top center"
+            textposition="top center",
+            hovertemplate="<br>".join([
+                "Name: %{customdata[0]}",
+                "Value: %{customdata[2]}",
+                "Exact Date: %{customdata[1]}"
+            ])
         )
         
         fig.update_layout(clickmode="event+select", legend=dict(
