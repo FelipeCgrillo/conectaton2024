@@ -99,14 +99,39 @@ def extract_timeline_data_vital(timeline_data, clinical_data):
     try:
         value = str(clinical_data["valueQuantity"]["value"]) + " " + clinical_data["valueQuantity"]["code"]
     except KeyError:
-        value = "No value"
+        value = "No Value"
 
-    timeline_data.append({
-        "Title": "Vital Signs",
-        "Name": vital_name,
-        "Date": date,
-        "Value": value
-    })
+    if value == "No Value":
+        try:
+            # Initialisiere ein Dictionary für Vitaldaten
+            vital_data = {"Title": "Vital Signs", "Date": date}
+            vital_data["Name"] = vital_name
+            number = 1
+            # Iteriere durch die Komponenten in clinical_data
+            for component in clinical_data["component"]:
+                # Füge Name und Value für jede Komponente zum Dictionary hinzu
+                vital_data[f"Name {number}"] = str(component["code"]["coding"][0]["display"])
+                vital_data[f"Value {number}"] = (
+                    str(component["valueQuantity"]["value"]) + " " + component["valueQuantity"]["code"]
+                )
+                number += 1
+            timeline_data.append(vital_data)
+        except KeyError:
+            try:
+                vital_data = {"Title": "Vital Signs", "Date": date}
+                vital_data[f"Name {number}"] = clinical_data["code"]["coding"][0]["display"]
+                vital_data["Value"] = clinical_data["valueString"]
+                timeline_data.append(vital_data)
+            except KeyError:
+                value = "No Value"
+    else:
+        # Standarddaten zur Timeline hinzufügen
+        timeline_data.append({
+            "Title": "Vital Signs",
+            "Name": vital_name,
+            "Date": date,
+            "Value": value
+        })
 
 def extract_timeline_data_history(timeline_data, clinical_data):
     # extract date
