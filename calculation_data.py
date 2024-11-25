@@ -82,7 +82,7 @@ def extract_timeline_data_intolerance(timeline_data, clinical_data):
     intolerance_name= code["coding"][0]["display"]
 
     timeline_data.append({
-        "Title": "AllergyIntolerance",
+        "Title": "Allergy Intolerance",
         "Name": intolerance_name,
         "Date": date,
         "Reaction": clinical_data["reaction"][0]["manifestation"][0]["coding"][0]["display"],
