@@ -11,6 +11,7 @@ import qrcode
 from io import BytesIO
 from streamlit_qrcode_scanner import qrcode_scanner
 
+import calculation_data
 from menu import menu
 
 # Set page title and icon
@@ -826,11 +827,48 @@ def generate_patient_qr(patient_id):
     img_byte_arr.seek(0)
     return img_byte_arr
 
+def calculate_patient_data(patient_id):
+    """
+    Get all the data from the IPS Composition of the given patient
+    Needed for timeline and laboratory results
+    Args:
+        patient_id (str): The patient's ID
+    """
+    # Daten abrufen
+    if patient_id:
+        composition_data = calculation_data.fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
+        if not composition_data or "entry" not in composition_data:
+            st.error("No data found for the patient. Please check the patient ID or data source.")
+            st.stop()
+
+        resource = composition_data["entry"][0]["resource"]
+
+        timeline_data = []
+
+        for section in resource["section"]:
+            if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary" or section["title"] == "Allergies Summary" or section["title"] == "Vital Signs Summary" or section["title"] == "Social History Summary":
+                for entry in section["entry"]:
+                    if "reference" in entry:
+                        clinical_data = calculation_data.search_for_clinical_data(entry["reference"]) # clinical data ist nun ein json aus EINER observation
+                        if section["title"] == "Medication Summary":
+                            calculation_data.extract_timeline_data_encounter(timeline_data, clinical_data) # füge diese observation in die timeline ein
+                        if section["title"] == "Problems Summary":
+                            calculation_data.extract_timeline_data_condition(timeline_data, clinical_data)
+                        if section["title"] == "Results Summary":
+                            calculation_data.extract_timeline_data_observation(timeline_data, clinical_data)
+                        if section["title"] == "Allergies Summary":
+                            calculation_data.extract_timeline_data_intolerance(timeline_data, clinical_data)
+                        if section["title"] == "Vital Signs Summary":
+                            calculation_data.extract_timeline_data_vital(timeline_data, clinical_data)
+                        if section["title"] == "Social History Summary":
+                            calculation_data.extract_timeline_data_history(timeline_data, clinical_data)
+
+        st.session_state['laboratory_data'] = timeline_data
+
 def main():
     """
     Main Streamlit application function
     """
-
 
     # Title of the application
     st.title("Patient Search Portal")
@@ -853,12 +891,13 @@ def main():
                 st.warning("Please enter a FHIR Server URL")
             if not patient_id:
                 st.warning("Please enter a Patient ID")
-                
-            
+
             with st.spinner('Searching for patient...'):
                 patient_data = search_patient(fhir_server_url,patient_id)
                 print(st.session_state)
                 display_patient_info(patient_data)
+
+            calculate_patient_data(patient_id)
 
     elif search_method == "QR Code Scanner":
         st.write("Scan QR Code")
@@ -869,11 +908,12 @@ def main():
                 patient_data = search_patient(qr_code)
                 if patient_data:
                     display_patient_info(patient_data)
+                    calculate_patient_data(patient_id)
                 else:
                     st.error("Patient not found")
 
     elif search_method == "Generate QR":
-        patient_id = st.text_input("Enter Patient ID for QR Generation", 
+        patient_id = st.text_input("Enter Patient ID for QR Generation",
                                     placeholder="Enter a valid Patient ID")
         
         if st.button("Generate QR"):
@@ -892,6 +932,8 @@ def main():
                 file_name=f"patient_{patient_id}_qr.png",
                 mime="image/png"
             )
+
+    # Menu
     menu()
 
 # Run the Streamlit app
