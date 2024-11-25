@@ -1,8 +1,6 @@
 import streamlit as st
 import requests
 
-patient_id = st.session_state.get("patient_id", None)
-
 def search_for_clinical_data(request):
     try:
         url = f"https://ips-challenge.it.hs-heilbronn.de/fhir/{request}"
@@ -32,10 +30,10 @@ def extract_timeline_data_observation(timeline_data, clinical_data):
     symbol = ""
 
     # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
-    if "Glucose" in observation_name:
-        symbol = "Glucose Level"  # Glucose
-    elif "Hemoglobin" in observation_name:
-        symbol = "Hemoglobin in Blood"  # Hämoglobin
+    if "Glucose" in observation_name or "glucose" in observation_name:
+        symbol = " - Glucose Level"  # Glucose
+    elif "Hemoglobin" in observation_name or "hemoglobin" in observation_name:
+        symbol = " - Hemoglobin in Blood"  # Hämoglobin
 
     value = ""
     try:
@@ -44,7 +42,7 @@ def extract_timeline_data_observation(timeline_data, clinical_data):
         value = "No value"
 
     timeline_data.append({
-        "Title": "Observation" + " - " + symbol,
+        "Title": "Observation" + symbol,
         "Name": observation_name,
         "Date": date,
         "Value": value

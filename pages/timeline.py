@@ -9,8 +9,7 @@ patient_id = st.session_state.get('patient_id', None)
 timeline_data = st.session_state.get('laboratory_data', None)
 menu_with_redirect()
 
-def print_timeline(data):
-    
+def print_timeline(data):    
     # Verify the user's role
     if not st.session_state.patient_id:
         st.warning("No patient found.")
@@ -93,7 +92,7 @@ def print_timeline(data):
             x="Date",
             y="Title",
             color="Color",
-            symbol="Symbol",  # Form der Punkte
+            symbol="Symbol",
             color_discrete_map={key: val['color'] for key, val in style_map.items()},  # Farbskala
             symbol_map={key: val['symbol'] for key, val in style_map.items()},
             labels={"Date": "Date", "Title": "Resource Type", "Color": "Legend"},
