@@ -107,3 +107,34 @@ def extract_timeline_data_vital(timeline_data, clinical_data):
         "Date": date,
         "Value": value
     })
+
+def extract_timeline_data_history(timeline_data, clinical_data):
+    # extract date
+    date = clinical_data["effectiveDateTime"]
+    code = clinical_data["code"]
+    history_name = "Observation - Other"
+
+    value = ""
+    try:
+        value = clinical_data["valueCodeableConcept"]["coding"][0]["display"]
+    except KeyError:
+        value = "No value"
+    note = ""
+    try:
+        note = clinical_data["note"][0]["text"]
+    except KeyError:
+        note = "No Note"
+    method = ""
+    try:
+        method = clinical_data["method"]["coding"][0]["display"]
+    except KeyError:
+        method = "No Method"
+
+    timeline_data.append({
+        "Title": "Social History",
+        "Name": history_name,
+        "Date": date,
+        "Value": value,
+        "Note": note,
+        "Method": method
+    })
