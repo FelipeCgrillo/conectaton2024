@@ -1,11 +1,11 @@
 import streamlit as st
-from menu import menu_with_redirect
+
 import pandas as pd
 import plotly.express as px
 
 patient_id = st.session_state.get('patient_id', None)
 timeline_data = st.session_state.get('laboratory_data', None)
-menu_with_redirect()
+
 
 st.title("Laboratory Results")
 

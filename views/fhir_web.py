@@ -6,6 +6,7 @@ import re
 import qrcode
 from io import BytesIO
 from streamlit_qrcode_scanner import qrcode_scanner
+import calculation_data
 
 # Set page title and icon
 st.set_page_config(page_title="Patient Search", page_icon="🩺")
