@@ -1,8 +1,5 @@
 import streamlit as st
-from menu import menu_with_redirect
-from fhir_web import search_patient_resource
-
-menu_with_redirect()
+from views.fhir_web import search_patient_resource
 
 # Encounters Section
 with st.expander("🏥 Encounters", expanded=True):

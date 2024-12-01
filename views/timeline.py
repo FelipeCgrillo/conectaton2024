@@ -1,5 +1,4 @@
 import streamlit as st
-from menu import menu_with_redirect
 import pandas as pd
 import plotly.express as px
 import requests
@@ -8,7 +7,6 @@ from fhir.resources.composition import Composition
 patient_id = st.session_state.get('patient_id', None)
 
 def print_timeline(data):
-    menu_with_redirect()
 
     # Verify the user's role
     if not st.session_state.patient_id:
@@ -261,6 +259,7 @@ timeline_data = []
 for section in resource["section"]:
     if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary":
         for entry in section["entry"]:
+            print(entry["reference"])
             clinical_data = search_for_clinical_data(entry["reference"]) # clinical data ist nun ein json aus EINER observation
             if section["title"] == "Medication Summary":
                 extract_timeline_data_encounter(timeline_data, section["title"], clinical_data) # füge diese observation in die timeline ein

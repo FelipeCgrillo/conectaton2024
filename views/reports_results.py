@@ -1,8 +1,6 @@
 import streamlit as st
-from menu import menu_with_redirect
-from fhir_web import search_patient_resource, process_observations
 
-menu_with_redirect()
+from views.fhir_web import search_patient_resource, process_observations
 
 # Observations Section
 observations = search_patient_resource(st.session_state.fhir_server_url, st.session_state.patient_id, "Observation")

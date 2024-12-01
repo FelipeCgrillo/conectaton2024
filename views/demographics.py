@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
-from menu import menu_with_redirect
-from fhir_web import search_patient
+from views.fhir_web import search_patient
 
 import folium
 from streamlit_folium import folium_static
@@ -40,7 +39,7 @@ def get_location_coordinates(address_str):
         st.warning(f"Error getting coordinates: {e}")
         return None
 
-menu_with_redirect()
+st.session_state.current_page = "Demographics"
 
 st.title("Demographics")
 
