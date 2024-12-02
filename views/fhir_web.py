@@ -226,8 +226,8 @@ def main():
             with st.spinner('Searching for patient...'):
                 patient_data = search_patient(fhir_server_url,patient_id)
                 if patient_data:
-                    st.rerun()
                     calculate_patient_data(patient_id)
+                    st.rerun()
                 else:
                     st.error("Patient not found.")
                 #display_patient_info(patient_data)
@@ -247,8 +247,8 @@ def main():
                 patient_id = match.groups()[1].replace("Patient/","")
                 patient_data = search_patient(fhir_server_url,patient_id)
                 if patient_data:
-                    st.rerun()
                     calculate_patient_data(patient_id)
+                    st.rerun()
                 else:
                     st.error("Patient not found.")
 
