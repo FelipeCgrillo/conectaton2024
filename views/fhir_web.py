@@ -168,12 +168,36 @@ def calculate_patient_data(patient_id):
     """
     # Daten abrufen
     if patient_id:
-        composition_data = calculation_data.fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
-        if not composition_data or "entry" not in composition_data:
-            st.error("No data found for the patient. Please check the patient ID or data source.")
-            st.stop()
 
-        resource = composition_data["entry"][0]["resource"]
+        resource = {}
+        composition_data = {}
+
+        if st.session_state.history:
+            resource = {}
+            composition_data = calculation_data.fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
+            try:
+                composition_data = calculation_data.fetch_fhir_data("https://ips-challenge.it.hs-heilbronn.de/fhir/Composition/UC4-Composition/_history/51")
+            except Exception:
+                print("No history data of the patients composition available.")
+            if not composition_data:
+                st.error("No data found for the patient. Please check the patient ID or data source.")
+                st.stop()
+
+            if "entry" in composition_data:
+                resource = composition_data["entry"][0]["resource"]
+            else:
+                resource = composition_data
+
+            if not resource:
+                st.error("No data found for the patient. Please check the patient ID or data source.")
+                st.stop()
+        else:
+            composition_data = calculation_data.fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
+            if not composition_data or "entry" not in composition_data:
+                st.error("No data found for the patient. Please check the patient ID or data source.")
+                st.stop()
+
+            resource = composition_data["entry"][0]["resource"]
 
         timeline_data = []
 

@@ -14,5 +14,7 @@ def update_navigation():
         return st.navigation([fhir_web, demographics, clinical, encounters_procedures, reports_results, new_event, timeline, laboratory])
     return st.navigation([fhir_web])
 
+st.session_state.history = True
+
 pg = update_navigation()
 pg.run()
