@@ -27,13 +27,14 @@ def extract_timeline_data_observation(timeline_data, clinical_data):
     # extract date
     date = clinical_data["effectiveDateTime"]
     observation_name = clinical_data["code"]["coding"][0]["display"]
+    loinc = clinical_data["code"]["coding"][0]["code"]
     symbol = ""
 
     # Überprüfen, ob der Name "Glucose" oder "Hemoglobin" ist
-    if "Glucose" in observation_name or "glucose" in observation_name:
-        symbol = " - Glucose Level"  # Glucose
-    elif "Hemoglobin" in observation_name or "hemoglobin" in observation_name:
-        symbol = " - Hemoglobin in Blood"  # Hämoglobin
+    if loinc == "14749-6": # loinc code for glucose level
+        symbol = " - Glucose Level"
+    elif loinc == "4548-4": # loinc code for hemoglobin level
+        symbol = " - Hemoglobin in Blood"
 
     value = ""
     try:
