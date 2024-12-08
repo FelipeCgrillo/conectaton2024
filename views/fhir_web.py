@@ -172,7 +172,7 @@ def calculate_patient_data(patient_id):
         resource = {}
         composition_data = {}
 
-        if st.session_state.history:
+        if st.session_state.history and patient_id == "UC4-Patient":
             resource = {}
             composition_data = calculation_data.fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
             try:

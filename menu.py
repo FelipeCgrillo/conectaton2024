@@ -14,6 +14,7 @@ def update_navigation():
         return st.navigation([fhir_web, demographics, clinical, encounters_procedures, reports_results, new_event, timeline, laboratory])
     return st.navigation([fhir_web])
 
+# Set this True if you want to use the history data of Martas composition instead if the current version
 st.session_state.history = True
 
 pg = update_navigation()
