@@ -166,12 +166,13 @@ def calculate_patient_data(patient_id):
     Args:
         patient_id (str): The patient's ID
     """
-    # Daten abrufen
+    # get data
     if patient_id:
 
         resource = {}
         composition_data = {}
 
+        # if there is the history version to visualize diabetes data (just valued in code (manual))
         if st.session_state.history and patient_id == "UC4-Patient":
             resource = {}
             composition_data = calculation_data.fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
@@ -191,6 +192,7 @@ def calculate_patient_data(patient_id):
             if not resource:
                 st.error("No data found for the patient. Please check the patient ID or data source.")
                 st.stop()
+        # else: other patient or we dont want to see the history version
         else:
             composition_data = calculation_data.fetch_fhir_data(f"https://ips-challenge.it.hs-heilbronn.de/fhir/Composition?patient={patient_id}")
             if not composition_data or "entry" not in composition_data:

@@ -15,7 +15,7 @@ def search_for_clinical_data(request):
 
         return []
     except requests.RequestException as e:
-        st.error(f"Error fetching medications: {e}")
+        st.error(f"Error fetching data: {e}")
         return []
 
 def fetch_fhir_data(url):
@@ -59,7 +59,7 @@ def extract_timeline_data_observation(timeline_data, clinical_data):
 
     # add data to the timeline
     timeline_data.append({
-        "Title": "Observation" + symbol,
+        "Title": "Results" + symbol,
         "Name": observation_name,
         "Date": date,
         "Value": value
@@ -72,17 +72,43 @@ def extract_timeline_data_encounter(timeline_data, clinical_data):
     :param timeline_data: json to save the specific data and later print the timelines
     :param clinical_data: extended data of the patient
     """
-    # extract date
-    date = clinical_data["authoredOn"]
-    concept = clinical_data["medicationCodeableConcept"]
-    encounter_name = concept["coding"][0]["display"]
+    date = ""
+    if clinical_data["resourceType"] == "MedicationRequest":
+        # extract date
+        date = clinical_data["authoredOn"]
+        title ="Medication Requests"
+    if clinical_data["resourceType"] == "MedicationStatement":
+        # extract date
+        date = clinical_data["effectiveDateTime"]
+        title ="Medication Statements"
+    if clinical_data["resourceType"] == "MedicationAdministration":
+        # extract date
+        date = clinical_data["effectiveDateTime"]
+        title ="Medication Adminstrations"
+    
+    if date != "":
+        concept = clinical_data["medicationCodeableConcept"]
+        encounter_name = concept["coding"][0]["display"]
 
-    # add data to the timeline
-    timeline_data.append({
-        "Title": "Medication Request",
-        "Name": encounter_name,
-        "Date": date
-    })
+        # add data to the timeline
+        timeline_data.append({
+            "Title": title,
+            "Name": encounter_name,
+            "Date": date
+        })
+
+    if clinical_data["resourceType"] == "MedicationDispense":
+        # extract date
+        date = clinical_data["whenPrepared"]
+        concept = clinical_data["medicationCodeableConcept"]
+        encounter_name = concept["coding"][0]["display"]
+
+        # add data to the timeline
+        timeline_data.append({
+            "Title": "Medication Dispenses",
+            "Name": encounter_name,
+            "Date": date
+        })
 
 # Get the data of problems summary for the timeline
 def extract_timeline_data_condition(timeline_data, clinical_data):
@@ -98,7 +124,7 @@ def extract_timeline_data_condition(timeline_data, clinical_data):
     
     # add data to the timeline
     timeline_data.append({
-        "Title": "Condition",
+        "Title": "Problems",
         "Name": condition_name,
         "Date": date
     })
