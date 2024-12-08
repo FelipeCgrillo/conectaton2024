@@ -201,22 +201,53 @@ def calculate_patient_data(patient_id):
 
         timeline_data = []
 
+        # Loinc Code:             ...["code"]["Coding"][0]["code"]
+
+        # Medication Summary:      10160-0 MedicationStatement | MedicationRequest | MedicationAdministration | MedicationDispense
+        # Allergies Summary:       48765-2 Allergy Intollerance
+        # Problems Summary:  	   11450-4 Condition
+        # Results Summary:         30954-2 Observation | DiagnosticReport
+        # Vital Signs Summary:     8716-3  Observation
+        # Social History Summary:  29762-2 Observation
+
+        # Immunizations:           ?       Immunizations
+        # History of Procedures:   47519-4  (?) Procedures
+        # Medical Devices:         ?       DeviceUseStatement
+        # Advance Directives:      42348-3  (?) Consent
+        # Alerts:                  104605-1 (?) Flag
+        # Functional Status:       8671-0   (?) Condition | ClinicalImpression
+        # History of Past Illness: 11349-8  (?) Condition
+        # History of Pregnancy:    67471-3  (?) Observation
+        # Patient Story:           -
+        # Plan of Care:            ?       CarePlan
+
         for section in resource["section"]:
-            if section["title"] == "Medication Summary" or section["title"] == "Problems Summary" or section["title"] == "Results Summary" or section["title"] == "Allergies Summary" or section["title"] == "Vital Signs Summary" or section["title"] == "Social History Summary":
+            if section["code"]["coding"][0]["code"] == "10160-0" or\
+                section["code"]["coding"][0]["code"] == "11450-4" or\
+                section["code"]["coding"][0]["code"] == "30954-2" or\
+                section["code"]["coding"][0]["code"] == "48765-2" or\
+                section["code"]["coding"][0]["code"] == "8716-3" or\
+                section["code"]["coding"][0]["code"] == "29762-2":
                 for entry in section["entry"]:
                     if "reference" in entry:
-                        clinical_data = calculation_data.search_for_clinical_data(entry["reference"]) # clinical data ist nun ein json aus EINER observation
-                        if section["title"] == "Medication Summary":
-                            calculation_data.extract_timeline_data_encounter(timeline_data, clinical_data) # füge diese observation in die timeline ein
-                        if section["title"] == "Problems Summary":
+                        clinical_data = calculation_data.search_for_clinical_data(entry["reference"])
+                        if section["code"]["coding"][0]["code"] == "10160-0": # Medication
+                            # MedicationStatement | MedicationRequest | MedicationAdministration | MedicationDispense
+                            calculation_data.extract_timeline_data_encounter(timeline_data, clinical_data)
+                        if section["code"]["coding"][0]["code"] == "11450-4": # Problems
+                            # Condition
                             calculation_data.extract_timeline_data_condition(timeline_data, clinical_data)
-                        if section["title"] == "Results Summary":
+                        if section["code"]["coding"][0]["code"] == "30954-2": # Results
+                            # Observation | DiagnosticReport
                             calculation_data.extract_timeline_data_observation(timeline_data, clinical_data)
-                        if section["title"] == "Allergies Summary":
+                        if section["code"]["coding"][0]["code"] == "48765-2": # Allergies
+                            # Allergy Intollerance
                             calculation_data.extract_timeline_data_intolerance(timeline_data, clinical_data)
-                        if section["title"] == "Vital Signs Summary":
+                        if section["code"]["coding"][0]["code"] == "8716-3": # Vital
+                            # Observation
                             calculation_data.extract_timeline_data_vital(timeline_data, clinical_data)
-                        if section["title"] == "Social History Summary":
+                        if section["code"]["coding"][0]["code"] == "29762-2": # Social
+                            # Observation
                             calculation_data.extract_timeline_data_history(timeline_data, clinical_data)
 
         st.session_state['laboratory_data'] = timeline_data
