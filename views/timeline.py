@@ -5,6 +5,12 @@ import plotly.express as px
 patient_id = st.session_state.get('patient_id', None)
 timeline_data = st.session_state.get('laboratory_data', None)
 
+low_glucose = 60 # mg/dL
+mid_glucose = 100 # mg/dL
+high_glucose = 140 # mg/dL
+mid_hemo = 6.5 # percent = 7,75 mmol/l = 47 mmol/mol
+high_hemo = 8.5 # percent = 11 mmol/l = 69 mmol/mol
+
 # Hilfsfunktion zur Erstellung von Name-Value-Paaren für eine beliebige Anzahl
 def generate_custom_data(row):
     # Beginne mit den Basisfeldern
@@ -44,13 +50,14 @@ def print_timeline(data):
     df['Symbol'] = "circle"
 
     style_map = {
-        'Normal Glucose (< 140 mg/dL)': {'color': 'green', 'symbol': 'square'},  # Grün und Viereck
-        'Marginal Glucose (140-199 mg/dL)': {'color': 'orange', 'symbol': 'triangle-up'},  # Orange und Dreieck
-        'Abnormal Glucose (>= 200 mg/dL)': {'color': 'red', 'symbol': 'star'},  # Rot und Stern
-        'Normal Hemoglobin (20–38 mmol/mol)': {'color': 'green', 'symbol': 'square'},  # Grün und Viereck
-        'Marginal Hemoglobin (39–47 mmol/mol)': {'color': 'orange', 'symbol': 'triangle-up'},  # Orange und Dreieck
-        'Abnormal Hemoglobin (> 48 mmol/mol)': {'color': 'red', 'symbol': 'star'},  # Rot und Stern
-        'Neutral': {'color': 'blue', 'symbol': 'circle'}  # Blau und Kreis
+        f'Abnormal Glucose (< {low_glucose} mg/dL)': {'color': 'red', 'symbol': 'star'},
+        f'Normal Glucose ({low_glucose}-{mid_glucose-1} mg/dL)': {'color': 'green', 'symbol': 'square'},  # Grün und Viereck
+        f'Marginal Glucose ({mid_glucose}-{high_glucose-1} mg/dL)': {'color': 'orange', 'symbol': 'triangle-up'},  # Orange und Dreieck
+        f'Abnormal Glucose (>= {high_glucose} mg/dL)': {'color': 'red', 'symbol': 'star'},  # Rot und Stern
+        f'Normal Hemoglobin (< {mid_hemo} %)': {'color': 'green', 'symbol': 'square'},  # Grün und Viereck
+        f'Marginal Hemoglobin ({mid_hemo}-{high_hemo-1} %)': {'color': 'orange', 'symbol': 'triangle-up'},  # Orange und Dreieck
+        f'Abnormal Hemoglobin (>= {high_hemo} %)': {'color': 'red', 'symbol': 'star'},  # Rot und Stern
+        f'Neutral': {'color': 'blue', 'symbol': 'circle'}  # Blau und Kreis
     }
 
     if 'Results - Glucose Level' in df['Title'].values or 'Results - Hemoglobin in Blood' in df['Title'].values:
@@ -58,8 +65,8 @@ def print_timeline(data):
             glucose_df_timeline = df[df['Title'] == "Results - Glucose Level"]
             glucose_df_timeline['Value'] = glucose_df_timeline['Value'].str.extract(r'(\d+\.?\d*)').astype(float)  # Extract numeric values
             glucose_df_timeline['Status'] = glucose_df_timeline['Value'].apply(
-                lambda x: 'Normal Glucose (< 140 mg/dL)' if x < 140 else (
-                    'Marginal Glucose (140-199 mg/dL)' if 140 <= x <= 199 else 'Abnormal Glucose (>= 200 mg/dL)'
+                lambda x: f'Marginal Glucose (< {low_glucose} mg/dL)' if x < low_glucose else ( f'Normal Glucose ({low_glucose}-{mid_glucose-1} mg/dL)' if low_glucose <= x < mid_glucose else (
+                    f'Marginal Glucose ({mid_glucose}-{high_glucose-1} mg/dL)' if mid_glucose <= x < high_glucose else f'Abnormal Glucose (>= {high_glucose} mg/dL)')
                 )
             )
             # Zuweisung von Farben und Symbolen basierend auf Status
@@ -75,8 +82,8 @@ def print_timeline(data):
             hemoglobin_df_timeline = df[df['Title'] == "Results - Hemoglobin in Blood"]
             hemoglobin_df_timeline['Value'] = hemoglobin_df_timeline['Value'].str.extract(r'(\d+\.?\d*)').astype(float)  # Extract numeric values
             hemoglobin_df_timeline['Status'] = hemoglobin_df_timeline['Value'].apply(
-                lambda x: 'Normal Hemoglobin (20–38 mmol/mol)' if x <= 5.6 else (
-                    'Marginal Hemoglobin (39–47 mmol/mol)' if 5.6 < x <= 6.4 else 'Abnormal Hemoglobin (> 48 mmol/mol)'
+                lambda x: f'Normal Hemoglobin (< {mid_hemo} %)' if x < mid_hemo else (
+                    f'Marginal Hemoglobin ({mid_hemo}-{high_hemo-1} %)' if mid_hemo <= x < high_hemo else f'Abnormal Hemoglobin (>= {high_hemo} %)'
                 )
             )
             # Zuweisung von Farben und Symbolen basierend auf Status
