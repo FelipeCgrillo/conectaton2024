@@ -53,9 +53,9 @@ def print_timeline(data):
         'Neutral': {'color': 'blue', 'symbol': 'circle'}  # Blau und Kreis
     }
 
-    if 'Observation - Glucose Level' in df['Title'].values or 'Observation - Hemoglobin in Blood' in df['Title'].values:
-        if 'Observation - Glucose Level' in df['Title'].values:
-            glucose_df_timeline = df[df['Title'] == "Observation - Glucose Level"]
+    if 'Results - Glucose Level' in df['Title'].values or 'Results - Hemoglobin in Blood' in df['Title'].values:
+        if 'Results - Glucose Level' in df['Title'].values:
+            glucose_df_timeline = df[df['Title'] == "Results - Glucose Level"]
             glucose_df_timeline['Value'] = glucose_df_timeline['Value'].str.extract(r'(\d+\.?\d*)').astype(float)  # Extract numeric values
             glucose_df_timeline['Status'] = glucose_df_timeline['Value'].apply(
                 lambda x: 'Normal Glucose (< 140 mg/dL)' if x < 140 else (
@@ -71,8 +71,8 @@ def print_timeline(data):
             df.loc[glucose_df_timeline.index, 'Symbol'] = glucose_df_timeline['Symbol']
             df.loc[glucose_df_timeline.index, 'Color'] = glucose_df_timeline['Status']
 
-        if 'Observation - Hemoglobin in Blood' in df['Title'].values:
-            hemoglobin_df_timeline = df[df['Title'] == "Observation - Hemoglobin in Blood"]
+        if 'Results - Hemoglobin in Blood' in df['Title'].values:
+            hemoglobin_df_timeline = df[df['Title'] == "Results - Hemoglobin in Blood"]
             hemoglobin_df_timeline['Value'] = hemoglobin_df_timeline['Value'].str.extract(r'(\d+\.?\d*)').astype(float)  # Extract numeric values
             hemoglobin_df_timeline['Status'] = hemoglobin_df_timeline['Value'].apply(
                 lambda x: 'Normal Hemoglobin (20–38 mmol/mol)' if x <= 5.6 else (

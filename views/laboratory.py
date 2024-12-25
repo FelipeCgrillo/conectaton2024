@@ -15,9 +15,9 @@ def print_diagram_glucose(data):
     df['Date'] = pd.to_datetime(df['Date'])
 
     # Glucose values chart
-    glucose_df = df[df['Title'] == "Observation - Glucose Level"]
+    glucose_df = df[df['Title'] == "Results - Glucose Level"]
 
-    if not glucose_df.empty and not glucose_df.isna().all().all():
+    if not glucose_df.empty:# and not glucose_df.isna().all().all():
         # Add color
         glucose_df['Color'] = "Neutral"
         # Add symbol
@@ -99,7 +99,7 @@ def print_diagram_hemoglobin(data):
     df['Date'] = pd.to_datetime(df['Date'])
 
     # Glucose values chart
-    hemoglobin_df = df[df['Title'] == "Observation - Hemoglobin in Blood"]
+    hemoglobin_df = df[df['Title'] == "Results - Hemoglobin in Blood"]
     #hemoglobin_df = hemoglobin_df[hemoglobin_df['Name'].str.contains("Hemoglobin", case=False)]
     
     if not hemoglobin_df.empty:
