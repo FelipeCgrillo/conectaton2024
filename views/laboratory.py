@@ -3,6 +3,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# TODO: Diagramm ist unten noch grün, unten muss farbig gelb sein
+# TODO: Alle farben sind noch an der falschen stelle
+
 patient_id = st.session_state.get('patient_id', None)
 timeline_data = st.session_state.get('laboratory_data', None)
 
@@ -62,29 +65,38 @@ def print_diagram_glucose(data):
 
         fig_glucose.update_layout(
             shapes=[
-                # Normalbereich (< 140 mg/dL) in hellgrün
+                # Minimalbereich (< 60 mg/dL) in hellorange
                 dict(
                     type="rect",
                     x0=min_date_with_buffer, x1=max_date_with_buffer,
-                    y0=0, y1=140,
-                    fillcolor="lightgreen",
-                    opacity=0.2,
-                    line_width=0
-                ),
-                # Marginalbereich (140-199 mg/dL) in hellorange
-                dict(
-                    type="rect",
-                    x0=min_date_with_buffer, x1=max_date_with_buffer,
-                    y0=140, y1=200,
+                    y0=0, y1=low_glucose,
                     fillcolor="lightgoldenrodyellow",
                     opacity=0.2,
                     line_width=0
                 ),
-                # Abnormalbereich (>= 200 mg/dL) in hellrot
+                # Normalbereich (60-99 mg/dL) in hellgrün
                 dict(
                     type="rect",
                     x0=min_date_with_buffer, x1=max_date_with_buffer,
-                    y0=200, y1=glucose_df['Value'].max(),  # Y-Wert bis zum maximalen Glukosewert
+                    y0=low_glucose, y1=mid_glucose,
+                    fillcolor="lightgreen",
+                    opacity=0.2,
+                    line_width=0
+                ),
+                # Marginalbereich (100-139 mg/dL) in hellorange
+                dict(
+                    type="rect",
+                    x0=min_date_with_buffer, x1=max_date_with_buffer,
+                    y0=mid_glucose, y1=high_glucose,
+                    fillcolor="lightgoldenrodyellow",
+                    opacity=0.2,
+                    line_width=0
+                ),
+                # Abnormalbereich (>= 140 mg/dL) in hellrot
+                dict(
+                    type="rect",
+                    x0=min_date_with_buffer, x1=max_date_with_buffer,
+                    y0=high_glucose, y1=glucose_df['Value'].max(),  # Y-Wert bis zum maximalen Glukosewert
                     fillcolor="lightcoral",
                     opacity=0.2,
                     line_width=0
@@ -124,7 +136,7 @@ def print_diagram_hemoglobin(data):
         hemoglobin_df['Status'] = hemoglobin_df['Value'].apply(categorize_hba1c)
 
         # Plotly chart
-        fig_glucose = px.line(
+        fig_hemoglobin = px.line(
             hemoglobin_df,
             x="Date",
             y="Value",
@@ -136,12 +148,12 @@ def print_diagram_hemoglobin(data):
             },
             markers=True,
             labels={"Value": "Hemoglobin  [%]", "Date": "Date"},
-            title="Hemoglobin Levels Over Time",
+            title="Hemoglobin Levels Over Time (Ac1 Test)",
             hover_data=["Exact Date"]
         )
         
         # Punktgröße erhöhen
-        fig_glucose.update_traces(marker=dict(size=10), mode='markers')
+        fig_hemoglobin.update_traces(marker=dict(size=10), mode='markers')
 
         # Puffer für X-Achse
         min_date = hemoglobin_df['Date'].min()
@@ -151,20 +163,20 @@ def print_diagram_hemoglobin(data):
         max_date_with_buffer = max_date + buffer_days
 
         # Markierungsbereiche
-        fig_glucose.update_layout(
+        fig_hemoglobin.update_layout(
             shapes=[
                 dict(type="rect", x0=min_date_with_buffer, x1=max_date_with_buffer,
-                     y0=4.0, y1=5.7, fillcolor="lightgreen", opacity=0.2, line_width=0),
+                     y0=0, y1=mid_hemo, fillcolor="lightgreen", opacity=0.2, line_width=0),
                 dict(type="rect", x0=min_date_with_buffer, x1=max_date_with_buffer,
-                     y0=5.7, y1=6.5, fillcolor="lightgoldenrodyellow", opacity=0.2, line_width=0),
+                     y0=mid_hemo, y1=high_hemo, fillcolor="lightgoldenrodyellow", opacity=0.2, line_width=0),
                 dict(type="rect", x0=min_date_with_buffer, x1=max_date_with_buffer,
-                     y0=6.5, y1=hemoglobin_df['Value'].max() if not hemoglobin_df.empty else 7.0,
+                     y0=high_hemo, y1=hemoglobin_df['Value'].max() if not hemoglobin_df.empty else 7.0,
                      fillcolor="lightcoral", opacity=0.2, line_width=0)
             ]
         )
 
         # Diagramm anzeigen
-        st.plotly_chart(fig_glucose)
+        st.plotly_chart(fig_hemoglobin)
     else:
         st.info("No Hemoglobin data available.")
 
