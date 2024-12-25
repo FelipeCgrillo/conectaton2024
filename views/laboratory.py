@@ -3,9 +3,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# TODO: Diagramm ist unten noch grün, unten muss farbig gelb sein
-# TODO: Alle farben sind noch an der falschen stelle
-
 patient_id = st.session_state.get('patient_id', None)
 timeline_data = st.session_state.get('laboratory_data', None)
 
