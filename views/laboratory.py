@@ -6,6 +6,11 @@ import plotly.express as px
 patient_id = st.session_state.get('patient_id', None)
 timeline_data = st.session_state.get('laboratory_data', None)
 
+low_glucose = 60 # mg/dL
+mid_glucose = 100 # mg/dL
+high_glucose = 140 # mg/dL
+mid_hemo = 6.5 # percent = 7,75 mmol/l = 47 mmol/mol
+high_hemo = 8.5 # percent = 11 mmol/l = 69 mmol/mol
 
 st.title("Laboratory Results")
 
@@ -25,15 +30,16 @@ def print_diagram_glucose(data):
         glucose_df.loc[:, 'Exact Date'] = df['Date'].dt.strftime('%B %d, %Y')
         glucose_df['Value'] = glucose_df['Value'].str.extract(r'(\d+\.?\d*)').astype(float)  # Extract numeric values
         glucose_df['Status'] = glucose_df['Value'].apply(
-            lambda x: 'Normal (< 140 mg/dL)' if x < 140 else ('Marginal (140-199 mg/dL)' if 140 <= x <= 199 else 'Abnormal (>= 200 mg/dL)')
-        )
+            lambda x: f'Marginal (< {low_glucose} mg/dL)' if x < low_glucose else ( f'Normal ({low_glucose}-{mid_glucose-1} mg/dL)' if low_glucose <= x < mid_glucose else (
+                    f'Marginal ({mid_glucose}-{high_glucose-1} mg/dL)' if mid_glucose <= x < high_glucose else f'Abnormal (>= {high_glucose} mg/dL)')
+        ))
 
         fig_glucose = px.line(
             glucose_df,
             x="Date",
             y="Value",
             color="Status",
-            color_discrete_map={"Normal (< 140 mg/dL)": "green","Marginal (140-199 mg/dL)": "orange", "Abnormal (>= 200 mg/dL)": "red"},
+            color_discrete_map={f'Marginal (< {low_glucose} mg/dL)': "orange", f'Normal ({low_glucose}-{mid_glucose-1} mg/dL)': "green",f'Marginal ({mid_glucose}-{high_glucose-1} mg/dL)': "orange", f'Abnormal (>= {high_glucose} mg/dL)': "red"},
             markers=True,
             labels={"Value": "Glucose Level [mg/dL]", "Date": "Date"},
             title="Glucose Levels Over Time",
@@ -108,12 +114,12 @@ def print_diagram_hemoglobin(data):
         
         # Categorize values
         def categorize_hba1c(value):
-            if value <= 5.6:
-                return 'Normal (20–38 mmol/mol)'
-            elif 5.6 < value <= 6.4:
-                return 'Marginal (39–47 mmol/mol)'
+            if value < mid_hemo:
+                return f'Normal (< {mid_hemo} %)'
+            elif mid_hemo <= value < high_hemo:
+                return f'Marginal ({mid_hemo}-{high_hemo-1} %)'
             else:
-                return 'Abnormal (> 48 mmol/mol)'
+                return f'Abnormal (>= {high_hemo} %)'
 
         hemoglobin_df['Status'] = hemoglobin_df['Value'].apply(categorize_hba1c)
 
@@ -124,9 +130,9 @@ def print_diagram_hemoglobin(data):
             y="Value",
             color="Status",
             color_discrete_map={
-                "Normal (20–38 mmol/mol)": "green",
-                "Marginal (39–47 mmol/mol)": "orange",
-                "Abnormal (> 48 mmol/mol)": "red"
+                f"Normal (< {mid_hemo} %)": "green",
+                f"Marginal ({mid_hemo}-{high_hemo-1} %)": "orange",
+                f"Abnormal (>= {high_hemo} %)": "red"
             },
             markers=True,
             labels={"Value": "Hemoglobin  [%]", "Date": "Date"},
