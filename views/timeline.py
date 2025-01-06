@@ -165,7 +165,7 @@ def print_timeline(data):
 
         # Legenden-Einträge anpassen/entfernen
         fig.for_each_trace(
-            lambda trace: trace.update(name=trace.name.split(",")[0])  # Entferne alles nach dem Komma (z. B. "Symbol")
+            lambda trace: trace.update(name=trace.name.split(",")[0] if trace.name else "")  # Entferne alles nach dem Komma (z. B. "Symbol")
         )
 
         fig.update_traces(

@@ -1,12 +1,12 @@
 import streamlit as st
-
 import requests
 import re
-
 import qrcode
 from io import BytesIO
+from datetime import datetime
 from streamlit_qrcode_scanner import qrcode_scanner
 import calculation_data
+import numpy as np
 
 # Set page title and icon
 st.set_page_config(page_title="Patient Search", page_icon="🩺")
@@ -31,7 +31,6 @@ def search_patient(fhir_server_url, patient_id):
     """
     try:
         # Construct the full URL with the patient ID
-        #url = f"https://ips-challenge.it.hs-heilbronn.de/fhir/Patient/{patient_id}"
         regex = r"(https:\/\/[^\/]+\/fhir\/)"
         res = re.match(regex, fhir_server_url)
         if not res:
@@ -45,13 +44,22 @@ def search_patient(fhir_server_url, patient_id):
         
         # Check if the request was successful
         if response.status_code == 200:
+            # Actualizar el estado de la sesión
             st.session_state.fhir_server_url = fhir_server_url
             st.session_state.patient_id = patient_id
-            return response.json()
+            
+            # Obtener los datos del paciente
+            patient_data = response.json()
+            
+            # Mostrar mensaje de éxito si no estamos en medio de una recarga
+            if not st.session_state.get('_is_reloading'):
+                patient_name = f"{patient_data.get('name', [{}])[0].get('given', [''])[0]} {patient_data.get('name', [{}])[0].get('family', '')}"
+                st.success(f"Patient found: {patient_name}")
+            
+            return patient_data
         else:
             st.session_state.fhir_server_url = None
             st.session_state.patient_id = None
-            st.warning(f"FHIR Server returned status code {response.status_code}.")
             return None
     
     except requests.RequestException as e:
@@ -255,84 +263,123 @@ def calculate_patient_data(patient_id):
         st.session_state['laboratory_data'] = timeline_data
 
 def main():
-    """
-    Main Streamlit application function
-    """
+    """Main function to run the Streamlit app"""
     st.title("Patient Search Portal")
-
-    # Create tabs for different search methods
-    search_method = st.radio(
-        "Choose search method:",
-        ["Manual ID Entry", "QR Code Scanner", "Generate QR"]
-    )
+    
+    # Verificar si acabamos de cargar un paciente
+    if st.session_state.get('patient_id') and not st.session_state.get('_is_reloading'):
+        patient_name = st.session_state.get('patient_name', '')
+        st.success(f"Patient found: {patient_name}")
+        st.session_state._is_reloading = True
+    
+    # Radio buttons for search method
+    search_method = st.radio("Choose search method:", 
+                           ["Manual ID Entry", "QR Code Scanner", "Generate QR"])
 
     if search_method == "Manual ID Entry":
-        # Input for FHIR Server URL
-        fhir_server_url = st.text_input("Enter FHIR Server URL", value="https://ips-challenge.it.hs-heilbronn.de/fhir/")
-        # Input for Patient ID
-        patient_id = st.text_input("Enter Patient ID", value="UC4-Patient")
-        
-        # Search button
-        if st.button("Search Patient"):
-            if not fhir_server_url:
-                st.warning("Please enter a FHIR Server URL")
-            if not patient_id:
-                st.warning("Please enter a Patient ID")
-                
-            
-            with st.spinner('Searching for patient...'):
-                patient_data = search_patient(fhir_server_url,patient_id)
-                if patient_data:
-                    calculate_patient_data(patient_id)
-                    st.rerun()
-                else:
-                    st.error("Patient not found.")
-                #display_patient_info(patient_data)
+        fhir_server_url = st.text_input("Enter FHIR Server URL", "https://ips-challenge.it.hs-heilbronn.de/fhir/")
+        patient_id = st.text_input("Enter Patient ID")
+        if st.button("Search"):
+            if patient_id:
+                with st.spinner('Searching for patient...'):
+                    patient_data = search_patient(fhir_server_url, patient_id)
+                    if patient_data:
+                        calculate_patient_data(patient_id)
+                        # Recargar la página sin mostrar el mensaje de éxito
+                        # El mensaje se mostrará en la siguiente carga
+                        st.rerun()
+                    else:
+                        st.error("Patient not found")
+            else:
+                st.warning("Please enter a patient ID")
 
     elif search_method == "QR Code Scanner":
-        st.write("Scan QR Code")
-        st.write("QR Code should contain link to FHIR Patient resource, for example https://ips-challenge.it.hs-heilbronn.de/fhir/Patient/UC4-Patient")
         qr_code = qrcode_scanner()
-        
         if qr_code:
             with st.spinner('Searching for patient...'):
-                regex = r"(https:\/\/[^/]+\/fhir\/)(Patient\/[^/]+)"
-                match = re.match(regex, qr_code)
-                if not len(match.groups()):
-                    st.error(f"QR Code link is invalidly formatted: {qr_code}")
-                fhir_server_url = match.groups()[0]
-                patient_id = match.groups()[1].replace("Patient/","")
-                patient_data = search_patient(fhir_server_url,patient_id)
-                if patient_data:
-                    calculate_patient_data(patient_id)
-                    st.rerun()
+                # Extract patient ID from QR code URL
+                match = re.search(r"Patient/([^/]+)$", qr_code)
+                if match:
+                    patient_id = match.group(1)
+                    # Extract FHIR server URL
+                    fhir_server_url = qr_code[:qr_code.index("Patient/")]
+                    patient_data = search_patient(fhir_server_url, patient_id)
+                    if patient_data:
+                        calculate_patient_data(patient_id)
+                        # Recargar la página sin mostrar el mensaje de éxito
+                        st.rerun()
+                    else:
+                        st.error("Patient not found")
                 else:
-                    st.error("Patient not found.")
+                    st.error("Invalid QR code format")
 
-    elif search_method == "Generate QR":
-        fhir_server_url = st.text_input("Enter FHIR Server URL for QR Generation", value="https://ips-challenge.it.hs-heilbronn.de/fhir/")
-        patient_id = st.text_input("Enter Patient ID for QR Generation", 
-                                    placeholder="Enter a valid Patient ID", value="UC4-Patient")
+    else:  # Generate QR
+        st.subheader("Generate QR Code and Consent")
+        fhir_server_url = st.text_input("Enter FHIR Server URL for QR Generation", "https://ips-challenge.it.hs-heilbronn.de/fhir/")
+        patient_id = st.text_input("Enter Patient ID for QR Generation")
         
-        if st.button("Generate QR"):
-            if not fhir_server_url:
-                st.warning("Please enter a FHIR Server URL")
-            elif not patient_id:
+        # Add digital signature canvas
+        st.write("Digital Signature:")
+        st.write("Please sign below to provide your consent:")
+        
+        from streamlit_drawable_canvas import st_canvas
+        canvas_result = st_canvas(
+            fill_color="rgba(255, 165, 0, 0.3)",
+            stroke_width=2,
+            stroke_color="#000000",
+            background_color="#ffffff",
+            height=150,
+            drawing_mode="freedraw",
+            key="signature_canvas"
+        )
+        
+        if st.button("Accept Consent and Generate QR"):
+            if not patient_id:
                 st.warning("Please enter a Patient ID")
-            else:
-                # Generate and display QR code
-                qr_image = generate_patient_qr(fhir_server_url, patient_id)
-                st.image(qr_image, caption=f"QR Code for Patient {patient_id}")
+                return
+            
+            if canvas_result.image_data is None or not np.any(canvas_result.image_data):
+                st.error("Please sign the document before proceeding")
+                return
                 
-                # Add download button
+            try:
+                # Verify if patient exists
+                patient_data = search_patient(fhir_server_url, patient_id)
+                if not patient_data:
+                    st.error("Patient not found with the provided ID")
+                    return
+                
+                # Get patient name if available
+                patient_name = f"{patient_data.get('name', [{}])[0].get('given', [''])[0]} {patient_data.get('name', [{}])[0].get('family', '')}"
+                
+                # Data for consent
+                patient_info = {
+                    'name': patient_name.strip(),
+                    'id': patient_id
+                }
+                
+                # Generate QR
+                qr_image = generate_patient_qr(fhir_server_url, patient_id)
+                
+                # QR data
+                qr_data = f"FHIR Server: {fhir_server_url}\nPatient ID: {patient_id}\nDate: {datetime.now().strftime('%B %d, %Y')}"
+                
+                # Generate PDF
+                from views.consent import generate_consent_pdf
+                pdf_buffer = generate_consent_pdf(patient_info, canvas_result.image_data, qr_data, qr_image)
+                
+                # Download button
                 st.download_button(
-                    label="Download QR Code",
-                    data=qr_image,
-                    file_name=f"patient_{patient_id}_qr.png",
-                    mime="image/png"
+                    label="Download Consent and QR Code",
+                    data=pdf_buffer,
+                    file_name=f"consent_qr_{patient_id}.pdf",
+                    mime="application/pdf"
                 )
-    if st.session_state.patient_id:
-        st.success("Patient found!")
+                
+                st.success("QR code and consent form generated successfully")
+                
+            except Exception as e:
+                st.error(f"An error occurred while generating the consent: {str(e)}")
 
 # Run the Streamlit app
 if __name__ == "__page__":
