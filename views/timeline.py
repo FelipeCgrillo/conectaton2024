@@ -134,6 +134,7 @@ def print_timeline(data):
 
     # Plotly Timeline Diagramm erstellen
     if not filtered_df.empty:
+        # Crear un gráfico de dispersión para todos los datos
         fig = px.scatter(
             filtered_df,
             x="Date",
@@ -148,6 +149,19 @@ def print_timeline(data):
                 "Symbol": False
             }
         )
+
+        # Añadir línea para conectar los puntos de glucosa
+        glucose_data = filtered_df[filtered_df['Title'] == "Results - Glucose Level"].copy()
+        if not glucose_data.empty:
+            glucose_data['Value'] = glucose_data['Value'].str.extract(r'(\d+\.?\d*)').astype(float)
+            fig.add_scatter(
+                x=glucose_data['Date'],
+                y=glucose_data['Title'],
+                mode='lines',
+                line=dict(color='gray', width=1, dash='dot'),
+                showlegend=False,
+                hoverinfo='skip'
+            )
 
         # Legenden-Einträge anpassen/entfernen
         fig.for_each_trace(
