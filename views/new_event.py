@@ -328,6 +328,34 @@ ENCOUNTER_TYPES = {
 
 MEDICATION_REQUEST_STATI = ["active", "on-hold", "cancelled", "completed", "entered-in-error", "stopped", "draft", "unknown"]
 
+# Códigos LOINC comunes relacionados con glucosa
+GLUCOSE_LOINC_CODES = {
+    "14749-6": "Glucosa en Suero o Plasma",
+    "2339-0": "Glucosa en Sangre",
+    "2345-7": "Glucosa en Orina",
+    "41653-7": "Glucosa en Sangre Estimada por Glucómetro",
+    "71596-5": "Glucosa en Sangre Total por Glucómetro",
+    "2344-0": "Glucosa 2 horas post 75g de glucosa oral",
+    "1558-6": "Glucosa en Sangre Capilar",
+    "14771-0": "Glucosa en Líquido Cefalorraquídeo",
+    "77145-5": "Glucosa en Sangre por Monitor Continuo",
+    "56109-4": "Hemoglobina A1c en Sangre por HPLC"
+}
+
+# Códigos SNOMED comunes relacionados con diabetes y glucosa
+DIABETES_SNOMED_CODES = {
+    "73211009": "Diabetes mellitus",
+    "44054006": "Diabetes mellitus tipo 2",
+    "46635009": "Diabetes mellitus tipo 1",
+    "4855003": "Retinopatía diabética",
+    "422088007": "Hipoglucemia",
+    "80394007": "Hiperglucemia",
+    "33747003": "Glucosa en sangre anormal",
+    "271737000": "Anormalidad de prueba de tolerancia a la glucosa",
+    "190447002": "Diabetes con complicaciones renales",
+    "190416008": "Diabetes con complicaciones neurológicas"
+}
+
 event_type = st.radio(
     "Event Type",
     #["Encounter", "Condition", "Observation", "Diagnostic Report"]
@@ -345,19 +373,37 @@ with st.form("new_clinical_event"):
         condition = st.text_input("Condition", placeholder="e.g., Diabetes decompensation", value="Diabetic retinopathy")
         status = st.selectbox("Clinical Status", ["active", "recurrence", "resolved"])
         onset_date = st.date_input("Onset Date")
-        st.write("Look up the SNOMED code")
+        
+        # Agregar selector de códigos SNOMED comunes para diabetes
+        st.write("Códigos SNOMED comunes para diabetes y glucosa:")
+        selected_snomed = st.selectbox(
+            "Seleccione un código SNOMED predefinido",
+            options=list(DIABETES_SNOMED_CODES.keys()),
+            format_func=lambda x: f"{x} - {DIABETES_SNOMED_CODES[x]}"
+        )
+        
+        st.write("O busque un código SNOMED personalizado:")
         st.page_link("https://browser.ihtsdotools.org/?", label="SNOMED")
-        snomed_code = st.text_input("SNOMED code (SCTID)", value="4855003")
-        snomed_display = st.text_input("SNOMED condition display text", value="Retinopathy due to diabetes mellitus (disorder)")
+        snomed_code = st.text_input("SNOMED code (SCTID)", value=selected_snomed)
+        snomed_display = st.text_input("SNOMED condition display text", value=DIABETES_SNOMED_CODES.get(selected_snomed, ""))
         
     elif event_type == "Laboratory result":
         obs_type = st.text_input("Observation Type", placeholder="e.g., Blood Glucose")
         value = st.number_input("Value")
         unit = st.text_input("Unit", placeholder="e.g., mg/dL")
-        st.write("Look up the LOINC code")
+        
+        # Agregar selector de códigos LOINC comunes para glucosa
+        st.write("Códigos LOINC comunes para glucosa:")
+        selected_loinc = st.selectbox(
+            "Seleccione un código LOINC predefinido",
+            options=list(GLUCOSE_LOINC_CODES.keys()),
+            format_func=lambda x: f"{x} - {GLUCOSE_LOINC_CODES[x]}"
+        )
+        
+        st.write("O busque un código LOINC personalizado:")
         st.page_link("http://search.loinc.org", label="LOINC")
-        loinc_code = st.text_input("LOINC code", value="14749-6")
-        loinc_display = st.text_input("LOINC display text", value="Glucose [Mass/volume] in Serum or Plasma")
+        loinc_code = st.text_input("LOINC code", value=selected_loinc)
+        loinc_display = st.text_input("LOINC display text", value=GLUCOSE_LOINC_CODES.get(selected_loinc, ""))
         obs_date = st.date_input("Observation Date")
         
     elif event_type == "Diagnostic Report":
