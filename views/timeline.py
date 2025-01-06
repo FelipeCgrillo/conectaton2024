@@ -11,25 +11,36 @@ high_glucose = 140 # mg/dL
 mid_hemo = 6.5 # percent = 7,75 mmol/l = 47 mmol/mol
 high_hemo = 8.5 # percent = 11 mmol/l = 69 mmol/mol
 
-# Hilfsfunktion zur Erstellung von Name-Value-Paaren für eine beliebige Anzahl
+# Función para generar datos personalizados para el hover
 def generate_custom_data(row):
-    # Beginne mit den Basisfeldern
-    hover_lines = [f"Exact Date: {row['Exact Date']}" if 'Exact Date' in row and row['Exact Date'] else ""]
-    if 'Name' in row and pd.notna(row['Name']):
-        hover_lines.append(f"Name: {row['Name']}")
+    hover_lines = []
+    
+    # Añadir título/tipo de recurso
+    if 'Title' in row and pd.notna(row['Title']):
+        hover_lines.append(f"<b>{row['Title']}</b>")
+    
+    # Añadir fecha
+    if 'Exact Date' in row and row['Exact Date']:
+        hover_lines.append(f"Date: {row['Exact Date']}")
+    
+    # Añadir valor si existe
     if 'Value' in row and pd.notna(row['Value']):
-        hover_lines.append(f"Value: {row['Value']}")
-    # Dynamisch Name-Value-Paare hinzufügen
-    for i in range(5):  # Passe die maximale Anzahl von Paaren an
-        name_key = f"Name {i}"
-        value_key = f"Value {i}"
-        name = row.get(name_key, None)
-        value = row.get(value_key, None)
-        # Füge das Paar nur hinzu, wenn beide Werte existieren und nicht NaN sind
-        if pd.notna(name) and pd.notna(value):
-            hover_lines.append(f"{name}: {value}")
-    # Entferne leere Zeilen und erstelle einen zusammenhängenden String
-    return "<br>".join(hover_lines) if hover_lines else None
+        if 'Results - Glucose Level' in str(row['Title']):
+            value = str(row['Value']).split()[0]  # Obtener solo el número
+            try:
+                hover_lines.append(f"Glucose: {float(value):.1f} mg/dL")
+            except:
+                hover_lines.append(f"Glucose: {row['Value']}")
+        elif 'Results - Hemoglobin in Blood' in str(row['Title']):
+            value = str(row['Value']).split()[0]  # Obtener solo el número
+            try:
+                hover_lines.append(f"Hemoglobin: {float(value):.1f} %")
+            except:
+                hover_lines.append(f"Hemoglobin: {row['Value']}")
+        else:
+            hover_lines.append(f"Value: {row['Value']}")
+    
+    return "<br>".join(hover_lines)
 
 def print_timeline(data):
 
@@ -127,7 +138,59 @@ def print_timeline(data):
         (df['Title'].isin(selected_resources))
     ]
 
+    # Preparar los datos para el gráfico
     filtered_df['Exact Date'] = filtered_df['Date'].dt.strftime('%B %d, %Y')
+    
+    # Formatear valores
+    def format_value(row):
+        if pd.isna(row['Value']):
+            return 'N/A'
+        try:
+            # Extraer el valor numérico
+            value = str(row['Value']).split()[0]
+            numeric_value = float(value)
+            
+            # Formatear según el tipo de medición
+            if 'Results - Glucose Level' in row['Title']:
+                return f"{numeric_value:.1f} mg/dL"
+            elif 'Results - Hemoglobin in Blood' in row['Title']:
+                return f"{numeric_value:.1f} %"
+            else:
+                return str(row['Value'])
+        except (ValueError, IndexError):
+            return str(row['Value'])
+    
+    # Aplicar el formato a los valores
+    filtered_df['Value'] = filtered_df.apply(format_value, axis=1)
+    
+    # Asegurarse de que todos los valores tengan el formato correcto
+    glucose_mask = filtered_df['Title'] == 'Results - Glucose Level'
+    hemoglobin_mask = filtered_df['Title'] == 'Results - Hemoglobin in Blood'
+    
+    # Verificar y corregir valores de glucosa
+    if glucose_mask.any():
+        filtered_df.loc[glucose_mask, 'Value'] = filtered_df.loc[glucose_mask].apply(
+            lambda x: f"{float(str(x['Value']).split()[0]):.1f} mg/dL" 
+            if not pd.isna(x['Value']) and 'mg/dL' not in str(x['Value']) 
+            else x['Value'], 
+            axis=1
+        )
+    
+    # Verificar y corregir valores de hemoglobina
+    if hemoglobin_mask.any():
+        filtered_df.loc[hemoglobin_mask, 'Value'] = filtered_df.loc[hemoglobin_mask].apply(
+            lambda x: f"{float(str(x['Value']).split()[0]):.1f} %" 
+            if not pd.isna(x['Value']) and '%' not in str(x['Value']) 
+            else x['Value'], 
+            axis=1
+        )
+
+    # Asegurarse de que el estado esté presente y formateado
+    if 'Status' not in filtered_df.columns:
+        filtered_df['Status'] = filtered_df.apply(
+            lambda row: row.get('Color', 'Neutral') if pd.isna(row.get('Status')) else row.get('Status'),
+            axis=1
+        )
 
     # Wende die Funktion auf die DataFrame-Zeilen an
     filtered_df['hover_info'] = filtered_df.apply(generate_custom_data, axis=1)
@@ -143,11 +206,7 @@ def print_timeline(data):
             symbol="Symbol",
             color_discrete_map={key: val['color'] for key, val in style_map.items()},
             symbol_map={key: val['symbol'] for key, val in style_map.items()},
-            labels={"Date": "Date", "Title": "Resource Type", "Color": "Legend"},
-            custom_data=["hover_info"],
-            hover_data={
-                "Symbol": False
-            }
+            labels={"Date": "Date", "Title": "Resource Type", "Color": "Legend"}
         )
 
         # Añadir línea para conectar los puntos de glucosa
@@ -163,27 +222,37 @@ def print_timeline(data):
                 hoverinfo='skip'
             )
 
-        # Legenden-Einträge anpassen/entfernen
+        # Actualizar las trazas para mostrar la información correctamente
+        for trace in fig.data:
+            if hasattr(trace, 'text'):
+                trace.update(
+                    hovertemplate="<b>%{y}</b><br>" +
+                                "Date: %{x|%B %d, %Y}<br>" +
+                                "Value: %{text}<extra></extra>",
+                    text=filtered_df['Value']
+                )
+
+        # Ajustar la leyenda
         fig.for_each_trace(
-            lambda trace: trace.update(name=trace.name.split(",")[0] if trace.name else "")  # Entferne alles nach dem Komma (z. B. "Symbol")
+            lambda trace: trace.update(name=trace.name.split(",")[0] if trace.name else "")
         )
 
-        fig.update_traces(
-            #text=filtered_df["Symbol"].where(filtered_df["Symbol"] != "", filtered_df["Name"]),
-            marker=dict(size=12, opacity=0.7),
-            mode="markers+text",
-            textposition="top center",
-            hovertemplate="%{customdata[0]}"
-        )
-        
-        fig.update_layout(clickmode="event+select", legend=dict(
-                                                            x=0.5,  # Zentriert horizontal
-                                                            y=-0.5,  # Oberhalb des Diagramms
-                                                            orientation="h",  # Horizontal
-                                                        )
+        # Configurar el diseño
+        fig.update_layout(
+            clickmode="event+select",
+            legend=dict(
+                x=0.5,
+                y=-0.5,
+                orientation="h"
+            ),
+            hoverlabel=dict(
+                bgcolor="white",
+                font_size=14,
+                font_family="Arial"
+            )
         )
 
-        # Zeitstrahl in Streamlit anzeigen
+        # Mostrar el gráfico
         st.plotly_chart(fig)
     else:
         st.warning("No data available for the selected filters.")
