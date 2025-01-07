@@ -12,7 +12,6 @@ def search_for_clinical_data(request):
         response = requests.get(url)
         if response.status_code == 200:
             return response.json()
-
         return []
     except requests.RequestException as e:
         st.error(f"Error fetching data: {e}")
@@ -20,180 +19,153 @@ def search_for_clinical_data(request):
 
 def fetch_fhir_data(url):
     """
-    Get the data from a specific URLS
+    Get the data from a specific URL
     :param url: url of fhir data
     :return: json
     """
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    else:
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()
         st.error(f"Error while reading the data: {response.status_code}")
-        return None
+    except requests.RequestException as e:
+        st.error(f"Error fetching data: {e}")
+    return None
 
-# Get the data of results summary for the timeline
 def extract_timeline_data_observation(timeline_data, clinical_data):
     """
-    extract the information of an observation from the clinical data
+    Extract the information of an observation from the clinical data
     :param timeline_data: json to save the specific data and later print the timelines
     :param clinical_data: extended data of the patient
     """
-    # extract date, name and loinc code
-    date = clinical_data["effectiveDateTime"]
-    observation_name = clinical_data["code"]["coding"][0]["display"]
-    loinc = clinical_data["code"]["coding"][0]["code"]
-    symbol = ""
+    date = clinical_data.get("effectiveDateTime", "N/A")
+    code = clinical_data.get("code", {}).get("coding", [{}])[0]
+    observation_name = code.get("display", "Unknown Observation")
+    loinc = code.get("code", "N/A")
 
-    # check if the observation is a glucose or hemoglobin level
-    if loinc == "14749-6": # loinc code for glucose level
+    symbol = ""
+    if loinc == "14749-6":
         symbol = " - Glucose Level"
-    elif loinc == "4548-4": # loinc code for hemoglobin level
+    elif loinc == "4548-4":
         symbol = " - Hemoglobin in Blood"
 
-    # try to get an value of this observation if available
-    value = ""
-    try:
-        value = str(clinical_data["valueQuantity"]["value"]) + " " + clinical_data["valueQuantity"]["code"]
-    except KeyError:
-        value = "No value"
+    value = clinical_data.get("valueQuantity", {}).get("value", "N/A")
+    unit = clinical_data.get("valueQuantity", {}).get("code", "")
+    value = f"{value} {unit}" if value != "N/A" else "No value"
 
-    # add data to the timeline
     timeline_data.append({
-        "Title": "Results" + symbol,
+        "Title": f"Results{symbol}",
         "Name": observation_name,
         "Date": date,
         "Value": value
     })
 
-# Get the data of medication summary for the timeline
 def extract_timeline_data_encounter(timeline_data, clinical_data):
     """
-    extract the information of an encounter from the clinical data
+    Extract the information of an encounter from the clinical data
     :param timeline_data: json to save the specific data and later print the timelines
     :param clinical_data: extended data of the patient
     """
-    date = ""
-    if clinical_data["resourceType"] == "MedicationRequest":
-        # extract date
-        date = clinical_data["authoredOn"]
-        title ="Medication Requests"
-    if clinical_data["resourceType"] == "MedicationStatement":
-        # extract date
-        date = clinical_data["effectiveDateTime"]
-        title ="Medication Statements"
-    if clinical_data["resourceType"] == "MedicationAdministration":
-        # extract date
-        date = clinical_data["effectiveDateTime"]
-        title ="Medication Adminstrations"
-    
-    if date != "":
-        concept = clinical_data["medicationCodeableConcept"]
-        encounter_name = concept["coding"][0]["display"]
+    date = "N/A"
+    title = "Unknown"
 
-        # add data to the timeline
-        timeline_data.append({
-            "Title": title,
-            "Name": encounter_name,
-            "Date": date
-        })
+    if clinical_data.get("resourceType") == "MedicationRequest":
+        date = clinical_data.get("authoredOn", "N/A")
+        title = "Medication Requests"
+    elif clinical_data.get("resourceType") == "MedicationStatement":
+        date = clinical_data.get("effectiveDateTime", "N/A")
+        title = "Medication Statements"
+    elif clinical_data.get("resourceType") == "MedicationAdministration":
+        date = clinical_data.get("effectiveDateTime", "N/A")
+        title = "Medication Administrations"
 
-    if clinical_data["resourceType"] == "MedicationDispense":
-        # extract date
-        date = clinical_data["whenPrepared"]
-        concept = clinical_data["medicationCodeableConcept"]
-        encounter_name = concept["coding"][0]["display"]
+    concept = clinical_data.get("medicationCodeableConcept", {}).get("coding", [{}])[0]
+    encounter_name = concept.get("display", "Unknown Medication")
 
-        # add data to the timeline
+    timeline_data.append({
+        "Title": title,
+        "Name": encounter_name,
+        "Date": date
+    })
+
+    if clinical_data.get("resourceType") == "MedicationDispense":
+        date = clinical_data.get("whenPrepared", "N/A")
+        encounter_name = clinical_data.get("medicationCodeableConcept", {}).get("coding", [{}])[0].get("display", "Unknown Medication")
+
         timeline_data.append({
             "Title": "Medication Dispenses",
             "Name": encounter_name,
             "Date": date
         })
 
-# Get the data of problems summary for the timeline
 def extract_timeline_data_condition(timeline_data, clinical_data):
     """
-    extract the information of an condition from the clinical data
+    Extract the information of a condition from the clinical data
     :param timeline_data: json to save the specific data and later print the timelines
     :param clinical_data: extended data of the patient
     """
-    # extract date
-    date = clinical_data["onsetDateTime"]
-    code = clinical_data["code"]
-    condition_name= code["coding"][0]["display"]
-    
-    # add data to the timeline
+    date = clinical_data.get("onsetDateTime", "N/A")
+    code = clinical_data.get("code", {}).get("coding", [{}])[0]
+    condition_name = code.get("display", "Unknown Condition")
+
     timeline_data.append({
         "Title": "Problems",
         "Name": condition_name,
         "Date": date
     })
 
-# Get the data of allergies summary for the timeline
 def extract_timeline_data_intolerance(timeline_data, clinical_data):
     """
-    extract the information of an intolerance from the clinical data
+    Extract the information of an intolerance from the clinical data
     :param timeline_data: json to save the specific data and later print the timelines
     :param clinical_data: extended data of the patient
     """
-    # extract date
-    date = clinical_data["onsetDateTime"]
-    code = clinical_data["code"]
-    intolerance_name= code["coding"][0]["display"]
+    date = clinical_data.get("onsetDateTime", "N/A")
+    code = clinical_data.get("code", {}).get("coding", [{}])[0]
+    intolerance_name = code.get("display", "Unknown Allergy")
 
-    # add data to the timeline
+    reaction = clinical_data.get("reaction", [{}])[0].get("manifestation", [{}])[0].get("coding", [{}])[0].get("display", "No reaction")
+    criticality = clinical_data.get("criticality", "Unknown")
+
     timeline_data.append({
         "Title": "Allergy Intolerance",
         "Name": intolerance_name,
         "Date": date,
-        "Reaction": clinical_data["reaction"][0]["manifestation"][0]["coding"][0]["display"],
-        "Criticality": clinical_data["criticality"]
+        "Reaction": reaction,
+        "Criticality": criticality
     })
 
-# Get the data of vital signs summary for the timeline
 def extract_timeline_data_vital(timeline_data, clinical_data):
     """
-    extract the information of vital data from the clinical data
+    Extract the information of vital data from the clinical data
     :param timeline_data: json to save the specific data and later print the timelines
     :param clinical_data: extended data of the patient
     """
-    # extract date
-    date = clinical_data["effectiveDateTime"]
-    code = clinical_data["code"]
-    vital_name= code["coding"][0]["display"]
+    date = clinical_data.get("effectiveDateTime", "N/A")
+    code = clinical_data.get("code", {}).get("coding", [{}])[0]
+    vital_name = code.get("display", "Unknown Vital Sign")
 
-    value = ""
-    try:
-        value = str(clinical_data["valueQuantity"]["value"]) + " " + clinical_data["valueQuantity"]["code"]
-    except KeyError:
-        value = "No Value"
+    value = clinical_data.get("valueQuantity", {}).get("value", "N/A")
+    unit = clinical_data.get("valueQuantity", {}).get("code", "")
+    value = f"{value} {unit}" if value != "N/A" else "No Value"
 
-    # if there is no directly linked value, try to extract a list of values (component)
     if value == "No Value":
-        try:
-            # initialize a dictionary for vital data
+        components = clinical_data.get("component", [])
+        if components:
             vital_data = {"Title": "Vital Signs", "Date": date}
-            vital_data["Name"] = vital_name
-            number = 1
-            # Iteriere durch die Komponenten in clinical_data
-            for component in clinical_data["component"]:
-                # add name and value for every component to the dict
-                vital_data[f"Name {number}"] = str(component["code"]["coding"][0]["display"])
-                vital_data[f"Value {number}"] = (
-                    str(component["valueQuantity"]["value"]) + " " + component["valueQuantity"]["code"]
-                )
-                number += 1
+            for idx, component in enumerate(components, start=1):
+                component_code = component.get("code", {}).get("coding", [{}])[0]
+                vital_data[f"Name {idx}"] = component_code.get("display", "Unknown Component")
+                vital_data[f"Value {idx}"] = f"{component.get('valueQuantity', {}).get('value', 'N/A')} {component.get('valueQuantity', {}).get('code', '')}"
             timeline_data.append(vital_data)
-        except KeyError:
-            try:
-                vital_data = {"Title": "Vital Signs", "Date": date}
-                vital_data[f"Name {number}"] = clinical_data["code"]["coding"][0]["display"]
-                vital_data["Value"] = clinical_data["valueString"]
-                timeline_data.append(vital_data)
-            except KeyError:
-                value = "No Value"
+        else:
+            timeline_data.append({
+                "Title": "Vital Signs",
+                "Name": vital_name,
+                "Date": date,
+                "Value": "No Value"
+            })
     else:
-        # add standard data to the timeline
         timeline_data.append({
             "Title": "Vital Signs",
             "Name": vital_name,
@@ -201,36 +173,19 @@ def extract_timeline_data_vital(timeline_data, clinical_data):
             "Value": value
         })
 
-# Get the data of social history summary for the timeline
 def extract_timeline_data_history(timeline_data, clinical_data):
     """
-    extract the information of the social history from the clinical data
+    Extract the information of the social history from the clinical data
     :param timeline_data: json to save the specific data and later print the timelines
     :param clinical_data: extended data of the patient
     """
-    # extract date
-    date = clinical_data["effectiveDateTime"]
-    code = clinical_data["code"]
+    date = clinical_data.get("effectiveDateTime", "N/A")
     history_name = "Observation - Other"
 
-    # add value, note and method to the data for information of the data history
-    value = ""
-    try:
-        value = clinical_data["valueCodeableConcept"]["coding"][0]["display"]
-    except KeyError:
-        value = "No value"
-    note = ""
-    try:
-        note = clinical_data["note"][0]["text"]
-    except KeyError:
-        note = "No Note"
-    method = ""
-    try:
-        method = clinical_data["method"]["coding"][0]["display"]
-    except KeyError:
-        method = "No Method"
+    value = clinical_data.get("valueCodeableConcept", {}).get("coding", [{}])[0].get("display", "No value")
+    note = clinical_data.get("note", [{}])[0].get("text", "No Note")
+    method = clinical_data.get("method", {}).get("coding", [{}])[0].get("display", "No Method")
 
-    # add data to the timeline
     timeline_data.append({
         "Title": "Social History",
         "Name": history_name,

@@ -50,7 +50,6 @@ def search_patient(fhir_server_url, patient_id):
             
             # Obtener los datos del paciente
             patient_data = response.json()
-            print(patient_data)
             
             # Mostrar mensaje de éxito si no estamos en medio de una recarga
             #if not st.session_state.get('_is_reloading'):
