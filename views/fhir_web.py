@@ -50,11 +50,12 @@ def search_patient(fhir_server_url, patient_id):
             
             # Obtener los datos del paciente
             patient_data = response.json()
+            print(patient_data)
             
             # Mostrar mensaje de éxito si no estamos en medio de una recarga
-            if not st.session_state.get('_is_reloading'):
-                patient_name = f"{patient_data.get('name', [{}])[0].get('given', [''])[0]} {patient_data.get('name', [{}])[0].get('family', '')}"
-                st.success(f"Patient found: {patient_name}")
+            #if not st.session_state.get('_is_reloading'):
+            st.session_state.patient_name = f"{patient_data.get('name', [{}])[0].get('given', [''])[0]} {patient_data.get('name', [{}])[0].get('family', '')}"
+            #st.success(f"Patient found: {patient_name}")
             
             return patient_data
         else:
@@ -270,7 +271,7 @@ def main():
     if st.session_state.get('patient_id') and not st.session_state.get('_is_reloading'):
         patient_name = st.session_state.get('patient_name', '')
         st.success(f"Patient found: {patient_name}")
-        st.session_state._is_reloading = True
+        #st.session_state._is_reloading = True
     
     # Radio buttons for search method
     search_method = st.radio("Choose search method:", 
@@ -282,11 +283,13 @@ def main():
         if st.button("Search"):
             if patient_id:
                 with st.spinner('Searching for patient...'):
+                    st.session_state._is_reloading = True
                     patient_data = search_patient(fhir_server_url, patient_id)
                     if patient_data:
                         calculate_patient_data(patient_id)
                         # Recargar la página sin mostrar el mensaje de éxito
                         # El mensaje se mostrará en la siguiente carga
+                        st.session_state._is_reloading = False
                         st.rerun()
                     else:
                         st.error("Patient not found")
