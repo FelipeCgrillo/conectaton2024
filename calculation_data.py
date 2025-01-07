@@ -47,7 +47,7 @@ def extract_timeline_data_observation(timeline_data, clinical_data):
     if loinc == "14749-6":
         symbol = " - Glucose Level"
     elif loinc == "4548-4":
-        symbol = " - Hemoglobin in Blood"
+        symbol = " - Ac1-Test"
 
     value = clinical_data.get("valueQuantity", {}).get("value", "N/A")
     unit = clinical_data.get("valueQuantity", {}).get("code", "")

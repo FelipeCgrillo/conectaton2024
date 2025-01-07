@@ -158,7 +158,7 @@ def print_diagram_hemoglobin(data):
             return
 
         # Hemoglobin values chart
-        hemoglobin_df = df[df['Title'] == "Results - Hemoglobin in Blood"]
+        hemoglobin_df = df[df['Title'] == "Results - Ac1-Test"]
         
         if not hemoglobin_df.empty:
             hemoglobin_df['Value'] = hemoglobin_df['Value'].str.extract(r'(\d+\.?\d*)').astype(float)  # Extract numeric values
@@ -187,8 +187,8 @@ def print_diagram_hemoglobin(data):
                     f"Abnormal (>= {high_hemo} %)": "red"
                 },
                 markers=True,
-                labels={"Value": "Hemoglobin  [%]", "Date": "Date"},
-                title="Hemoglobin Levels Over Time (Ac1 Test)",
+                labels={"Value": "Blood Sugar [%]", "Date": "Date"},
+                title="Average Blood Sugar Levels Over Time (Ac1 Test)",
                 hover_data=["Exact Date"]
             )
             

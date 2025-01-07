@@ -73,31 +73,31 @@ def print_timeline(data):
     if 'Results - Glucose Level' in valid_date_df['Title'].values:
         glucose_df_timeline = valid_date_df[valid_date_df['Title'] == "Results - Glucose Level"]
         glucose_df_timeline['Value'] = glucose_df_timeline['Value'].str.extract(r'(\d+\.?\d*)').astype(float)
-        glucose_df_timeline['Status'] = glucose_df_timeline['Value'].apply(
-            lambda x: f'Abnormal Glucose (< {low_glucose} mg/dL)' if x < low_glucose else (
-                f'Normal Glucose ({low_glucose}-{mid_glucose-1} mg/dL)' if x < mid_glucose else (
-                    f'Marginal Glucose ({mid_glucose}-{high_glucose-1} mg/dL)' if x < high_glucose else 
-                    f'Abnormal Glucose (>= {high_glucose} mg/dL)'
-                )
-            )
-        )
-        glucose_df_timeline['Color'] = glucose_df_timeline['Status'].map(lambda x: style_map[x]['color']).fillna('blue')
-        glucose_df_timeline['Symbol'] = glucose_df_timeline['Status'].map(lambda x: style_map[x]['symbol']).fillna('circle')
-        valid_date_df.loc[glucose_df_timeline.index, ['Color', 'Symbol']] = glucose_df_timeline[['Color', 'Symbol']]
+        #glucose_df_timeline['Status'] = glucose_df_timeline['Value'].apply(
+        #    lambda x: f'Abnormal Glucose (< {low_glucose} mg/dL)' if x < low_glucose else (
+        #        f'Normal Glucose ({low_glucose}-{mid_glucose-1} mg/dL)' if x < mid_glucose else (
+        #            f'Marginal Glucose ({mid_glucose}-{high_glucose-1} mg/dL)' if x < high_glucose else 
+        #            f'Abnormal Glucose (>= {high_glucose} mg/dL)'
+        #        )
+        #    )
+        #)
+        #glucose_df_timeline['Color'] = glucose_df_timeline['Status'].map(lambda x: style_map[x]['color']).fillna('blue')
+        #glucose_df_timeline['Symbol'] = glucose_df_timeline['Status'].map(lambda x: style_map[x]['symbol']).fillna('circle')
+        #valid_date_df.loc[glucose_df_timeline.index, ['Color', 'Symbol']] = glucose_df_timeline[['Color', 'Symbol']]
 
     # Apply hemoglobin styles
-    if 'Results - Hemoglobin in Blood' in valid_date_df['Title'].values:
-        hemoglobin_df_timeline = valid_date_df[valid_date_df['Title'] == "Results - Hemoglobin in Blood"]
+    if 'Results - Ac1-Test' in valid_date_df['Title'].values:
+        hemoglobin_df_timeline = valid_date_df[valid_date_df['Title'] == "Results - Ac1-Test"]
         hemoglobin_df_timeline['Value'] = hemoglobin_df_timeline['Value'].str.extract(r'(\d+\.?\d*)').astype(float)
-        hemoglobin_df_timeline['Status'] = hemoglobin_df_timeline['Value'].apply(
-            lambda x: f'Normal Hemoglobin (< {mid_hemo} %)' if x < mid_hemo else (
-                f'Marginal Hemoglobin ({mid_hemo}-{high_hemo-1} %)' if x < high_hemo else 
-                f'Abnormal Hemoglobin (>= {high_hemo} %)'
-            )
-        )
-        hemoglobin_df_timeline['Color'] = hemoglobin_df_timeline['Status'].map(lambda x: style_map[x]['color']).fillna('blue')
-        hemoglobin_df_timeline['Symbol'] = hemoglobin_df_timeline['Status'].map(lambda x: style_map[x]['symbol']).fillna('circle')
-        valid_date_df.loc[hemoglobin_df_timeline.index, ['Color', 'Symbol']] = hemoglobin_df_timeline[['Color', 'Symbol']]
+        #hemoglobin_df_timeline['Status'] = hemoglobin_df_timeline['Value'].apply(
+        #    lambda x: f'Normal Hemoglobin (< {mid_hemo} %)' if x < mid_hemo else (
+        #        f'Marginal Hemoglobin ({mid_hemo}-{high_hemo-1} %)' if x < high_hemo else 
+        #        f'Abnormal Hemoglobin (>= {high_hemo} %)'
+        #    )
+        #)
+        #hemoglobin_df_timeline['Color'] = hemoglobin_df_timeline['Status'].map(lambda x: style_map[x]['color']).fillna('blue')
+        #hemoglobin_df_timeline['Symbol'] = hemoglobin_df_timeline['Status'].map(lambda x: style_map[x]['symbol']).fillna('circle')
+        #valid_date_df.loc[hemoglobin_df_timeline.index, ['Color', 'Symbol']] = hemoglobin_df_timeline[['Color', 'Symbol']]
 
     # Sidebar filters
     st.sidebar.header("Filter Options")
@@ -127,16 +127,16 @@ def print_timeline(data):
             y="Title",
             color="Color",
             symbol="Symbol",
-            color_discrete_map={val['color']: val['color'] for val in style_map.values()},
-            symbol_map={val['symbol']: val['symbol'] for val in style_map.values()},
+            #color_discrete_map={val['color']: val['color'] for val in style_map.values()},
+            #symbol_map={val['symbol']: val['symbol'] for val in style_map.values()},
             labels={"Date": "Date", "Title": "Resource Type", "Color": "Legend"},
             custom_data=["hover_info"],
             hover_data={"Symbol": False}
         )
         fig.update_traces(marker=dict(size=12, opacity=0.7), hovertemplate="%{customdata[0]}")
         # Update legend with descriptions
-        fig.for_each_trace(lambda t: t.update(name=color_symbol_map.get(f"{t.marker.color}, {t.marker.symbol}", t.name)))
-        fig.update_layout(clickmode="event+select", legend=dict(orientation="h", y=-0.2))
+        #fig.for_each_trace(lambda t: t.update(name=color_symbol_map.get(f"{t.marker.color}, {t.marker.symbol}", t.name)))
+        fig.update_layout(showlegend=False, clickmode="event+select", legend=dict(orientation="h", y=-0.2))
         st.plotly_chart(fig)
     else:
         st.warning("No data available for the selected filters.")
