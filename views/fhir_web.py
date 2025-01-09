@@ -276,6 +276,24 @@ def main():
     search_method = st.radio("Choose search method:", 
                            ["Manual ID Entry", "QR Code Scanner", "Generate QR"])
 
+
+    if ("patient_id" in st.query_params):
+        fhir_server_url = "https://ips-challenge.it.hs-heilbronn.de/fhir/"
+        patient_id = st.query_params["patient_id"]
+        if st.session_state.patient_id != None:
+            return
+        with st.spinner('Searching for patient...'):
+            st.session_state._is_reloading = True
+            patient_data = search_patient(fhir_server_url, patient_id)
+            if patient_data:
+                calculate_patient_data(patient_id)
+                # Recargar la página sin mostrar el mensaje de éxito
+                # El mensaje se mostrará en la siguiente carga
+                st.session_state._is_reloading = False
+                st.rerun()
+            else:
+                st.error("Patient not found")
+
     if search_method == "Manual ID Entry":
         fhir_server_url = st.text_input("Enter FHIR Server URL", "https://ips-challenge.it.hs-heilbronn.de/fhir/")
         patient_id = st.text_input("Enter Patient ID")
@@ -361,7 +379,20 @@ def main():
                 }
                 
                 # Generate QR
-                qr_image = generate_patient_qr(fhir_server_url, patient_id)
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=4,
+                )
+                qr.add_data("https://conectaton2025.streamlit.app?patient_id=" + patient_id)
+                qr.make(fit=True)
+
+                img = qr.make_image(fill_color="black", back_color="white")
+                qr_image = BytesIO()
+                img.save(qr_image, format='PNG')
+                qr_image.seek(0)
+                
                 
                 # QR data
                 qr_data = f"FHIR Server: {fhir_server_url}\nPatient ID: {patient_id}\nDate: {datetime.now().strftime('%B %d, %Y')}"
